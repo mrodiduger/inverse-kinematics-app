@@ -9,6 +9,7 @@ import time
 from typing import List
 import logging
 import sys
+import os
 
 app = Flask(__name__, static_folder="client/dist/assets", template_folder="client/dist")
 app.logger.addHandler(logging.StreamHandler(sys.stdout))
