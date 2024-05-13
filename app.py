@@ -18,6 +18,9 @@ CORS(app, resources={r'/*': {'origins': '*'}})
 
 @app.route("/")
 def index():
+    app.logger.debug("Serving the index.html from the path: {}".format(os.path.join(app.template_folder, "index.html")))
+    if not os.path.exists(os.path.join(app.template_folder, "index.html")):
+        app.logger.error("index.html not found at the specified path.")
     return render_template("index.html")
 
 class ConfigData():
