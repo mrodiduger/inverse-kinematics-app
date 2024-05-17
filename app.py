@@ -9,9 +9,12 @@ import time
 from typing import List
 import logging
 import sys
+from judoscale.flask import Judoscale
+
 import os
 
 app = Flask(__name__, static_folder="client/dist")
+judoscale = Judoscale(app)
 app.logger.addHandler(logging.StreamHandler(sys.stdout))
 app.logger.setLevel(logging.ERROR)
 

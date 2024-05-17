@@ -24,3 +24,4 @@ torchvision==0.18.0+cpu
 triton==2.3.0
 typing_extensions==4.11.0
 Werkzeug==3.0.2
+judoscale==1.7.0
