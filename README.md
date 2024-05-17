@@ -158,12 +158,6 @@ Iteratively updating the joint angles using gradient descent to minimize the err
 
 ## 🚀 Getting Started
 
-**_Requirements_**
-
-Ensure you have the following dependencies installed on your system:
-
-- **JavaScript**: `version x.y.z`
-
 ### ⚙️ Installation
 
 1. Clone the inverse-kinematics-app repository:
