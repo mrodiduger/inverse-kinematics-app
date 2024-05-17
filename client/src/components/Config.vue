@@ -14,7 +14,7 @@
       <select class="form-select form-select-lg mb-3" aria-label="Default select example" v-model="lossFunction">
         <option v-for="(item, index) in lossFunctions" :value="index" :key="item"> {{ item }} </option>
       </select>
-      <label for="optimizer">Loss Function</label>
+      <label for="optimizer"> Optimizer </label>
       <select class="form-select form-select-lg mb-3" aria-label="Default select example" v-model="optimizer">
         <option v-for="(item, index) in optimizers" :value="index" :key="item"> {{ item }} </option>
       </select>
