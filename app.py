@@ -11,18 +11,20 @@ import logging
 import sys
 import os
 
-app = Flask(__name__, static_folder="client/dist/assets", template_folder="client/dist")
+app = Flask(__name__, static_folder="client/dist")
 app.logger.addHandler(logging.StreamHandler(sys.stdout))
 app.logger.setLevel(logging.ERROR)
 
 CORS(app, resources={r'/*': {'origins': '*'}})
 
-@app.route("/")
+
+@app.route('/')
 def index():
-    app.logger.debug("Serving the index.html from the path: {}".format(os.path.join(app.template_folder, "index.html")))
-    if not os.path.exists(os.path.join(app.template_folder, "index.html")):
-        app.logger.error("index.html not found at the specified path.")
-    return render_template("index.html")
+    return app.send_static_file('index.html')
+
+@app.route('/<path:path>')
+def serve_static_files(path):
+    return app.send_static_file(path)
 
 class ConfigData():
     def __init__(self, data) -> None:
