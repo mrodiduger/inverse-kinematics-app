@@ -43,6 +43,10 @@
 
 ---
 
+## Some Thoughts
+
+Well, this repository is the kinda-final form of my hobby project. I first got the idea from a [visualization by Matt Henderson](https://x.com/matthen2/status/1520427516997025792) a while ago, and recently decided to implement it to expose myself to web development a bit. I also deployed the application to Heroku but don't want to pay for more resources, so I hope no more than a few users try to use it at the same time :D You can use it locally by following the installation steps, though :) I think it might be a good educational resource for some instructors to use in lectures.
+
 ## 📍 Overview
 
 This web application aims to visualize inverse kinematics via gradient descent optimization.
