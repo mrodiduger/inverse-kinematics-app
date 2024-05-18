@@ -124,7 +124,7 @@ Iteratively updating the joint angles using gradient descent to minimize the err
 └── inverse-kinematics-app/
     ├── Procfile
     ├── README.md
-    ├── app.py
+    ├── app.py #main logic for optimization
     ├── client
     │   ├── .gitignore
     │   ├── .vscode
@@ -151,7 +151,7 @@ Iteratively updating the joint angles using gradient descent to minimize the err
     │   │   │   └── main.css
     │   │   ├── components
     │   │   │   ├── Config.vue
-    │   │   │   └── Visualizer.vue
+    │   │   │   └── Visualizer.vue #main logic for visualization
     │   │   ├── main.js
     │   │   └── router
     │   │       └── index.js
@@ -179,7 +179,6 @@ cd inverse-kinematics-app
 3. Create a virtual environment and install dependecies:
 
 ```sh
-npm install
 python3 -m venv -venv
 source .venv/bin/activate
 python3 -m pip install --upgrade pip
