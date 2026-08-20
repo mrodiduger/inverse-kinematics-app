@@ -1,12 +1,12 @@
 <template>
-  <RouterView />
+  <Visualizer />
 </template>
 
 <script setup>
-import { RouterView } from 'vue-router'
+import Visualizer from './components/Visualizer.vue'
 </script>
 
-\<style>
+<style>
   #app {
     margin: 0vw;
     max-width: max-content;

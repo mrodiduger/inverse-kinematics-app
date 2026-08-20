@@ -10,7 +10,7 @@
         />
         <h2>Iteration Count: {{ iterationCount }}</h2>
         <h2>Error: {{error}}</h2>
-        <button id="simulateButton" @click="simulate" type="button" :disabled="isInSimulation" class="btn btn-primary">Simulate</button>
+        <button id="simulateButton" @click="simulate" type="button" :disabled="isInSimulation || target == null" class="btn btn-primary">Simulate</button>
         <button id="simulateButton" @click="stop" type="button" :disabled="!isInSimulation" class="btn btn-primary">Stop</button>
     </div>
     <div id="canvas">
@@ -20,8 +20,9 @@
   
 <script setup>
 
-    import { ref, onMounted, watch, computed, reactive } from 'vue';
+    import { ref, onMounted, onUnmounted, watch, computed, reactive } from 'vue';
     import Config from '../components/Config.vue';
+    import { createSimulation } from '../simulation';
 
     
     //configuration parameters
@@ -44,40 +45,22 @@
     const canvasContext = ref(null);
 
     const positionsBuffer = ref([]);
+    const isInSimulation = ref(false);
+    let activeSimulation = null;
+    let simulationTimer = null;
 
     watch(numLinks, (newNumLinks) => {
         linkLengths.value = new Array(newNumLinks).fill(150);
         initialAngles.value = new Array(newNumLinks).fill(3*Math.PI/2);
     });
 
-    const simulatePath = '/api/simulate';
-    const url = ref(new URL(window.location.origin + simulatePath));
-    let isInSimulation = ref(false)
-    const activeEventSource = ref(null);
-    const readyState = ref(EventSource.CLOSED);
-    
-    watch(readyState, (newStatus) => {
-        switch(newStatus) {
-            case EventSource.CONNECTING:
-            case EventSource.OPEN:
-                isInSimulation.value = true;
-                break;
-            case EventSource.CLOSED:
-                isInSimulation.value = false;
-                break;
-        }
-    });
-    
-    
-
     function simulate() {
-        if (target.value == null) {
-            throw new Error("No target is set, please set a target by clicking somewhere on the canvas!");
+        if (target.value == null || isInSimulation.value) {
+            return;
         }
-        console.log("clicked simulate...");
-        const data = {
+
+        activeSimulation = createSimulation({
             learningRate: learningRate.value,
-            numLinks: numLinks.value,
             maxIteration: maxIteration.value,
             errorThreshold: errorThreshold.value,
             lossFunction: lossFunction.value,
@@ -85,46 +68,39 @@
             linkLengths: linkLengths.value,
             initialAngles: initialAngles.value,
             target: target.value
-        }
-        
-        
-        url.value.search = new URLSearchParams({config: JSON.stringify(data)});
-
+        });
         iterationCount.value = 0;
+        isInSimulation.value = true;
+        simulationTimer = window.setTimeout(runSimulationStep, 50);
+    }
 
-        // Setup EventSource
-        const eventSource = new EventSource(url.value);
-        activeEventSource.value = eventSource;
-        eventSource.onopen = () => {
-            readyState.value = EventSource.OPEN;
-        };
-        eventSource.onmessage = function(event) {
-            console.log('Received data:', event.data);
-            const data = JSON.parse(event.data);
-            iterationCount.value += 1;
-            error.value = data["error"].toFixed(4);
-            initialAngles.value = data["angles"];
-            positionsBuffer.value = data["positions"];
-        };
+    function runSimulationStep() {
+        const state = activeSimulation.step();
+        iterationCount.value = state.iteration;
+        error.value = state.error.toFixed(4);
+        initialAngles.value = state.angles;
+        positionsBuffer.value = state.positions;
 
-        eventSource.onerror = function(error) {
-            if (error.eventPhase == EventSource.CLOSED) {
-                // Connection was closed.
-                eventSource.close();
-            } else {
-                console.error('EventSource failed:', error);
-                eventSource.close();
-            }
-            readyState.value = activeEventSource.value.readyState;
-        };
+        if (state.done) {
+            activeSimulation = null;
+            simulationTimer = null;
+            isInSimulation.value = false;
+            return;
+        }
+
+        simulationTimer = window.setTimeout(runSimulationStep, 50);
     }
 
     function stop() {
-        if (activeEventSource.value) {
-            readyState.value = EventSource.CLOSED;
-            activeEventSource.value.close();
+        if (simulationTimer != null) {
+            window.clearTimeout(simulationTimer);
         }
+        activeSimulation = null;
+        simulationTimer = null;
+        isInSimulation.value = false;
     }
+
+    onUnmounted(stop);
 
     function drawArm(positions) {
         const ctx = canvasContext.value;
@@ -214,6 +190,3 @@
   }
 }
 </style>
-
-
-  
