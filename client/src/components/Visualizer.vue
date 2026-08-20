@@ -50,6 +50,7 @@
     let simulationTimer = null;
 
     watch(numLinks, (newNumLinks) => {
+        stop();
         linkLengths.value = new Array(newNumLinks).fill(150);
         initialAngles.value = new Array(newNumLinks).fill(3*Math.PI/2);
     });
