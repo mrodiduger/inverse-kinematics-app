@@ -18,8 +18,6 @@
 
 This is a small, interactive visualization of inverse kinematics solved through gradient-descent optimization. Choose between one and six links, click a target on the canvas, and compare how different loss functions and optimizers move the arm.
 
-The app runs entirely in the browser and can be hosted as a static site on GitHub Pages. There is no backend or automatic-differentiation dependency.
-
 ## How it works
 
 For link `i`, the cumulative joint angle is:
@@ -75,14 +73,6 @@ Run the numerical tests and production build with:
 npm test
 npm run build
 ```
-
-## GitHub Pages
-
-In the repository settings, open **Pages** and choose **GitHub Actions** as the source once. Pushes to `main` then test, build, and deploy the app automatically.
-
-The project site will be available at:
-
-<https://mrodiduger.github.io/inverse-kinematics-app/>
 
 ## License
 

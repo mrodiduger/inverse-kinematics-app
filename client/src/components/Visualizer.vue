@@ -35,7 +35,7 @@
 
     //latent parameters, link lengths might be made configurable in the future
     const linkLengths = ref(new Array(numLinks.value).fill(150));
-    const initialAngles = ref(new Array(numLinks.value).fill(3*Math.PI/2));
+    const initialAngles = ref([3*Math.PI/2, ...new Array(numLinks.value - 1).fill(0)]);
     const target = ref(null);
 
     const iterationCount = ref(0);
@@ -52,7 +52,7 @@
     watch(numLinks, (newNumLinks) => {
         stop();
         linkLengths.value = new Array(newNumLinks).fill(150);
-        initialAngles.value = new Array(newNumLinks).fill(3*Math.PI/2);
+        initialAngles.value = [3*Math.PI/2, ...new Array(newNumLinks - 1).fill(0)];
     });
 
     function simulate() {
