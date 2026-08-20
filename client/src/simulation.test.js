@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  createOptimizer,
+  createSimulation,
   endEffectorJacobian,
   forwardKinematics,
   jointGradient,
@@ -71,5 +73,81 @@ describe('analytic gradients', () => {
 
   it('maps the end-position gradient onto joint angles', () => {
     expect(jointGradient([[-2, 3], [0, 3]], [3, -4])).toEqual([-18, -12])
+  })
+})
+
+describe('optimizers', () => {
+  const cases = [
+    {
+      name: 'SGD',
+      id: 0,
+      expected: [[0.9975, -1.995], [0.9965, -1.997]],
+    },
+    {
+      name: 'Adam',
+      id: 1,
+      expected: [[0.9900000004, -1.9900000002], [0.981014248826313, -1.98654394181165]],
+    },
+    {
+      name: 'Adagrad',
+      id: 2,
+      expected: [[0.990000000004, -1.990000000002], [0.986286093241838, -1.99371390676485]],
+    },
+    {
+      name: 'RMSprop',
+      id: 3,
+      expected: [[0.900000039999984, -1.90000002], [0.86269986158341, -1.93730020537309]],
+    },
+  ]
+
+  cases.forEach(({ name, id, expected }) => {
+    it(`matches two reference ${name} updates`, () => {
+      const optimizer = createOptimizer(id, 2)
+      let angles = [1, -2]
+
+      angles = optimizer.step(angles, [0.25, -0.5], 0.01)
+      expectVectorClose(angles, expected[0])
+
+      angles = optimizer.step(angles, [0.1, 0.2], 0.01)
+      expectVectorClose(angles, expected[1])
+    })
+  })
+})
+
+describe('createSimulation', () => {
+  const baseConfig = {
+    learningRate: 0.001,
+    maxIteration: 2,
+    errorThreshold: 0.1,
+    lossFunction: 0,
+    optimizer: 0,
+    linkLengths: [1],
+    initialAngles: [0],
+    target: [0, 100],
+  }
+
+  it('stops after the configured maximum iteration count', () => {
+    const simulation = createSimulation(baseConfig)
+
+    expect(simulation.step().done).toBe(false)
+    const finalState = simulation.step()
+
+    expect(finalState.iteration).toBe(2)
+    expect(finalState.done).toBe(true)
+  })
+
+  it('stops when the post-update error meets the threshold', () => {
+    const simulation = createSimulation({
+      ...baseConfig,
+      maxIteration: 500,
+      target: [1, 0],
+    })
+
+    const state = simulation.step()
+
+    expect(state.iteration).toBe(1)
+    expect(state.error).toBe(0)
+    expect(state.positions).toEqual([[1, 0]])
+    expect(state.done).toBe(true)
   })
 })
