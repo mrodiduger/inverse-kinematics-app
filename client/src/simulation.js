@@ -14,6 +14,13 @@ export function forwardKinematics(linkLengths, jointAngles) {
   return positions
 }
 
+// Distances from the base the end effector can reach.
+export function workspace(linkLengths) {
+  const outer = linkLengths.reduce((sum, length) => sum + length, 0)
+  const inner = Math.max(0, 2 * Math.max(...linkLengths) - outer)
+  return { inner, outer }
+}
+
 export function endEffectorJacobian(linkLengths, jointAngles) {
   const cumulativeAngles = []
   let angle = 0
@@ -36,7 +43,22 @@ export function endEffectorJacobian(linkLengths, jointAngles) {
   })
 }
 
-export function lossAndGradient(position, target, lossFunction) {
+export const LOSS_FUNCTIONS = ['Squared error', 'Absolute error', 'Huber']
+
+// Tuned for the normalized problem in createSimulation (total reach 1).
+export const OPTIMIZERS = [
+  { name: 'SGD', learningRate: 1 },
+  { name: 'Adam', learningRate: 0.04 },
+  { name: 'Adagrad', learningRate: 0.2 },
+  { name: 'RMSprop', learningRate: 0.02 },
+]
+
+// A straight arm is singular: targets along it give a zero gradient.
+export function restPose(linkCount) {
+  return [Math.PI / 3, ...new Array(linkCount - 1).fill(1 / linkCount)]
+}
+
+export function lossAndGradient(position, target, lossFunction, huberDelta = 10) {
   const difference = [position[0] - target[0], position[1] - target[1]]
 
   if (lossFunction === 0) {
@@ -53,7 +75,7 @@ export function lossAndGradient(position, target, lossFunction) {
     }
   }
 
-  const delta = 10
+  const delta = huberDelta
   const componentLoss = difference.map((value) => {
     const absoluteValue = Math.abs(value)
     return absoluteValue <= delta
@@ -114,36 +136,55 @@ export function createOptimizer(optimizerId, parameterCount) {
   }
 }
 
+// Solves a copy scaled to a total reach of 1, so one learning rate works for
+// any arm size. Results are reported in world units.
 export function createSimulation(config) {
+  const reach = config.linkLengths.reduce((sum, length) => sum + length, 0)
+  const linkLengths = config.linkLengths.map((length) => length / reach)
+  const huberDelta = config.huberDelta ?? 0.05
+  let target = config.target.map((value) => value / reach)
   let angles = config.initialAngles.slice()
   let iteration = 0
   const optimizer = createOptimizer(config.optimizer, angles.length)
 
   return {
+    setTarget(nextTarget) {
+      target = nextTarget.map((value) => value / reach)
+    },
+
     step() {
-      const positions = forwardKinematics(config.linkLengths, angles)
+      const positions = forwardKinematics(linkLengths, angles)
       const endPosition = positions[positions.length - 1]
       const { gradient: endGradient } = lossAndGradient(
         endPosition,
-        config.target,
+        target,
         config.lossFunction,
+        huberDelta,
       )
-      const jacobian = endEffectorJacobian(config.linkLengths, angles)
+      const jacobian = endEffectorJacobian(linkLengths, angles)
       const gradients = jointGradient(jacobian, endGradient)
 
       angles = optimizer.step(angles, gradients, config.learningRate)
       iteration += 1
 
-      const nextPositions = forwardKinematics(config.linkLengths, angles)
+      const nextPositions = forwardKinematics(linkLengths, angles)
       const nextEndPosition = nextPositions[nextPositions.length - 1]
-      const { loss } = lossAndGradient(nextEndPosition, config.target, config.lossFunction)
+      const { loss } = lossAndGradient(nextEndPosition, target, config.lossFunction, huberDelta)
+      const distance = Math.hypot(
+        nextEndPosition[0] - target[0],
+        nextEndPosition[1] - target[1],
+      ) * reach
+      const converged = distance <= config.tolerance
 
       return {
-        positions: nextPositions,
+        positions: nextPositions.map(([x, y]) => [x * reach, y * reach]),
         angles: angles.slice(),
-        error: loss,
+        gradients,
+        loss,
+        distance,
         iteration,
-        done: loss <= config.errorThreshold || iteration >= config.maxIteration,
+        converged,
+        done: converged || iteration >= config.maxIteration,
       }
     },
   }

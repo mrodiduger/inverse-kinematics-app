@@ -1,193 +1,237 @@
 <template>
-    <div id="sidebar">
-        <Config 
-            v-model:learningRate.number="learningRate"
-            v-model:numLinks.number="numLinks"
-            v-model:maxIteration.number="maxIteration"
-            v-model:errorThreshold.number="errorThreshold"
-            v-model:lossFunction="lossFunction"
-            v-model:optimizer="optimizer"
-        />
-        <h2>Iteration Count: {{ iterationCount }}</h2>
-        <h2>Error: {{error}}</h2>
-        <button id="simulateButton" @click="simulate" type="button" :disabled="isInSimulation || target == null" class="btn btn-primary">Simulate</button>
-        <button id="simulateButton" @click="stop" type="button" :disabled="!isInSimulation" class="btn btn-primary">Stop</button>
-    </div>
-    <div id="canvas">
-        <canvas id="canvasElement" ref="canvasElement" width="1920" height="1080"></canvas>
-    </div>
+  <div id="sidebar">
+    <Config
+      v-model:learningRate.number="learningRate"
+      v-model:numLinks.number="numLinks"
+      v-model:maxIteration.number="maxIteration"
+      v-model:tolerance.number="tolerance"
+      v-model:lossFunction="lossFunction"
+      v-model:optimizer="optimizer"
+    />
+    <p>Iteration: {{ iteration }}</p>
+    <p>Distance to target: {{ distance == null ? '–' : distance.toFixed(3) }}</p>
+    <p class="status">{{ status }}</p>
+    <button type="button" class="btn btn-primary" :disabled="isRunning || !target" @click="simulate">Simulate</button>
+    <button type="button" class="btn btn-primary" :disabled="!isRunning" @click="stopByUser">Stop</button>
+    <button type="button" class="btn btn-outline-secondary" :disabled="isRunning" @click="resetPose">Reset pose</button>
+  </div>
+  <div id="canvas">
+    <canvas ref="canvasElement" class="arm-canvas" @click="placeTarget"></canvas>
+  </div>
 </template>
-  
+
 <script setup>
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import Config from './Config.vue'
+import { createSimulation, forwardKinematics, OPTIMIZERS, restPose, workspace } from '../simulation'
+import { createView } from '../view'
+import { drawScene } from '../draw'
 
-    import { ref, onMounted, onUnmounted, watch, computed, reactive } from 'vue';
-    import Config from '../components/Config.vue';
-    import { createSimulation } from '../simulation';
+const LINK_LENGTH = 1
 
-    
-    //configuration parameters
-    const learningRate = ref(1e-5);
-    const numLinks = ref(2);
-    const maxIteration = ref(500);
-    const errorThreshold = ref(2.0);
-    const lossFunction = ref(0);
-    const optimizer = ref(0);
+const learningRate = ref(OPTIMIZERS[0].learningRate)
+const numLinks = ref(2)
+const maxIteration = ref(500)
+const tolerance = ref(0.01)
+const lossFunction = ref(0)
+const optimizer = ref(0)
 
-    //latent parameters, link lengths might be made configurable in the future
-    const linkLengths = ref(new Array(numLinks.value).fill(150));
-    const initialAngles = ref([3*Math.PI/2, ...new Array(numLinks.value - 1).fill(0)]);
-    const target = ref(null);
+const angles = ref(restPose(numLinks.value))
+const target = ref(null)
+const iteration = ref(0)
+const outcome = ref(null)
+const isRunning = ref(false)
 
-    const iterationCount = ref(0);
-    const error = ref(0);
+const linkLengths = computed(() => new Array(numLinks.value).fill(LINK_LENGTH))
+const positions = computed(() => forwardKinematics(linkLengths.value, angles.value))
+const reach = computed(() => workspace(linkLengths.value))
 
-    const canvasElement = ref();
-    const canvasContext = ref(null);
+const distance = computed(() => {
+  if (!target.value) return null
+  const [x, y] = positions.value[positions.value.length - 1]
+  return Math.hypot(x - target.value[0], y - target.value[1])
+})
 
-    const positionsBuffer = ref([]);
-    const isInSimulation = ref(false);
-    let activeSimulation = null;
-    let simulationTimer = null;
+const isTargetReachable = computed(() => {
+  const radius = Math.hypot(...target.value)
+  return radius >= reach.value.inner - tolerance.value && radius <= reach.value.outer + tolerance.value
+})
 
-    watch(numLinks, (newNumLinks) => {
-        stop();
-        linkLengths.value = new Array(newNumLinks).fill(150);
-        initialAngles.value = [3*Math.PI/2, ...new Array(newNumLinks - 1).fill(0)];
-    });
+const status = computed(() => {
+  if (!target.value) return 'Click the canvas to place a target.'
+  if (isRunning.value) return 'Running…'
+  if (outcome.value === 'converged') return `Reached the target in ${iteration.value} iterations.`
+  if (!isTargetReachable.value) return 'The target is out of reach. The arm can only get as close as possible.'
+  if (outcome.value === 'limit') return 'Hit the iteration limit before reaching the target.'
+  if (outcome.value === 'stopped') return 'Stopped.'
+  return ''
+})
 
-    function simulate() {
-        if (target.value == null || isInSimulation.value) {
-            return;
-        }
+const canvasElement = ref()
+let canvasContext = null
+let view = null
+let simulation = null
+let frameRequest = null
+let resizeObserver = null
 
-        activeSimulation = createSimulation({
-            learningRate: learningRate.value,
-            maxIteration: maxIteration.value,
-            errorThreshold: errorThreshold.value,
-            lossFunction: lossFunction.value,
-            optimizer: optimizer.value,
-            linkLengths: linkLengths.value,
-            initialAngles: initialAngles.value,
-            target: target.value
-        });
-        iterationCount.value = 0;
-        isInSimulation.value = true;
-        simulationTimer = window.setTimeout(runSimulationStep, 50);
-    }
+watch(numLinks, (linkCount) => {
+  stop()
+  angles.value = restPose(linkCount)
+  iteration.value = 0
+  outcome.value = null
+})
 
-    function runSimulationStep() {
-        const state = activeSimulation.step();
-        iterationCount.value = state.iteration;
-        error.value = state.error.toFixed(4);
-        initialAngles.value = state.angles;
-        positionsBuffer.value = state.positions;
+watch(optimizer, (optimizerId) => {
+  learningRate.value = OPTIMIZERS[optimizerId].learningRate
+})
 
-        if (state.done) {
-            activeSimulation = null;
-            simulationTimer = null;
-            isInSimulation.value = false;
-            return;
-        }
+watch([positions, target], requestDraw)
 
-        simulationTimer = window.setTimeout(runSimulationStep, 50);
-    }
+function simulate() {
+  simulation = createSimulation({
+    learningRate: learningRate.value,
+    maxIteration: maxIteration.value,
+    tolerance: tolerance.value,
+    lossFunction: lossFunction.value,
+    optimizer: optimizer.value,
+    linkLengths: linkLengths.value,
+    initialAngles: angles.value,
+    target: target.value,
+  })
+  iteration.value = 0
+  outcome.value = null
+  isRunning.value = true
+  requestDraw()
+}
 
-    function stop() {
-        if (simulationTimer != null) {
-            window.clearTimeout(simulationTimer);
-        }
-        activeSimulation = null;
-        simulationTimer = null;
-        isInSimulation.value = false;
-    }
+function step() {
+  const state = simulation.step()
+  angles.value = state.angles
+  iteration.value = state.iteration
 
-    onUnmounted(stop);
+  if (state.done) {
+    stop()
+    outcome.value = state.converged ? 'converged' : 'limit'
+  }
+}
 
-    function drawArm(positions) {
-        const ctx = canvasContext.value;
-        ctx.clearRect(- canvasElement.value.width/2, - canvasElement.value.height/2, canvasElement.value.width, canvasElement.value.height); // Clear the canvas
-        const circle = new Path2D();
-        circle.arc(target.value[0], target.value[1], 10, 0, 2 * Math.PI);
-        ctx.beginPath();
-        ctx.moveTo(0,0);
-        positionsBuffer.value.forEach(position => {
-            ctx.lineTo(position[0], position[1]);
-        });
-        ctx.strokeStyle = '#ff0000';
-        ctx.lineWidth = 10;
-        ctx.stroke();
-        ctx.fill(circle);
-    }
+function stop() {
+  simulation = null
+  isRunning.value = false
+}
 
-    watch(positionsBuffer, () => {
-        requestAnimationFrame(drawArm);
-    }, { deep: true });
+function stopByUser() {
+  stop()
+  outcome.value = 'stopped'
+}
 
+function resetPose() {
+  angles.value = restPose(numLinks.value)
+  iteration.value = 0
+  outcome.value = null
+}
 
+function requestDraw() {
+  if (frameRequest == null) {
+    frameRequest = requestAnimationFrame(onFrame)
+  }
+}
 
-    onMounted(() => {
-        canvasContext.value = canvasElement.value.getContext('2d');
-        canvasContext.value.translate(canvasElement.value.width/2,canvasElement.value.height/2);
+function onFrame() {
+  frameRequest = null
+  if (simulation) {
+    step()
+  }
+  draw()
+  if (simulation) {
+    requestDraw()
+  }
+}
 
-        canvasElement.value.addEventListener( 'click', event => {
-            
-            if(target.value != null) {
-                canvasContext.value.clearRect(target.value[0] - 10, target.value[1] - 10,20,20)
-            }
-    
-            const bb = canvasElement.value.getBoundingClientRect();
-            const x = Math.floor( (event.clientX - bb.left) / bb.width * canvasElement.value.width ) - canvasElement.value.width/2;
-            const y = Math.floor( (event.clientY - bb.top) / bb.height * canvasElement.value.height )- canvasElement.value.height/2;
+function draw() {
+  const canvas = canvasElement.value
+  view = createView(canvas.width, canvas.height, reach.value.outer)
+  drawScene(canvasContext, view, { positions: positions.value, target: target.value }, window.devicePixelRatio)
+}
 
-            target.value = [x,y]
-            const circle = new Path2D();
-            circle.arc(x, y, 10, 0, 2 * Math.PI);
-            canvasContext.value.fill(circle);
-            
-            console.log({ x, y });
+function resizeCanvas() {
+  const canvas = canvasElement.value
+  const pixelRatio = window.devicePixelRatio
+  canvas.width = Math.round(canvas.clientWidth * pixelRatio)
+  canvas.height = Math.round(canvas.clientHeight * pixelRatio)
+  requestDraw()
+}
 
-        });
-    });
+function placeTarget(event) {
+  const canvas = canvasElement.value
+  const bounds = canvas.getBoundingClientRect()
+  const point = [
+    (event.clientX - bounds.left) * canvas.width / bounds.width,
+    (event.clientY - bounds.top) * canvas.height / bounds.height,
+  ]
+  target.value = view.toWorld(point)
+  simulation?.setTarget(target.value)
+  if (!isRunning.value) {
+    outcome.value = null
+  }
+}
+
+onMounted(() => {
+  canvasContext = canvasElement.value.getContext('2d')
+  resizeObserver = new ResizeObserver(resizeCanvas)
+  resizeObserver.observe(canvasElement.value)
+})
+
+onUnmounted(() => {
+  stop()
+  cancelAnimationFrame(frameRequest)
+  resizeObserver.disconnect()
+})
 </script>
-  
+
 <style scoped>
-  #sidebar {
-    float: left;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-top: 0px;
-    width: 100%;
-    height: auto;
-    gap: 10px;
-  }
+#sidebar {
+  float: left;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 10px;
+}
 
-  #canvasElement {
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    background-color: #f9f9f9;
-    margin: 10px;
-    width: 100%;
-    aspect-ratio: 1920/1080W;
-  }
+#sidebar button {
+  width: 100%;
+}
 
-  #simulateButton {
-    width: 100%;
-  }
-  #simulateButton:disabled {
-    cursor: not-allowed;
-    opacity: 0.3;
-  }
+#sidebar button:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
 
-  /* Styles for screens that are 600px or larger */
+.status {
+  min-height: 3em;
+  text-align: center;
+}
+
+.arm-canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+  cursor: crosshair;
+}
+
 @media screen and (min-width: 800px) {
   #sidebar {
-    width: 15vw; /* Sidebar width for larger screens */
-    height: 95vh; /* Sidebar height for larger screens */
+    width: 15vw;
+    height: 95vh;
   }
 
-  #canvasElement {
-    width: 80vw; /* Canvas width for larger screens */
+  .arm-canvas {
+    width: 80vw;
   }
 }
 </style>

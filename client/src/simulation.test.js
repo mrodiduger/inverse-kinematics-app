@@ -6,6 +6,8 @@ import {
   forwardKinematics,
   jointGradient,
   lossAndGradient,
+  restPose,
+  workspace,
 } from './simulation'
 
 function expectVectorClose(actual, expected) {
@@ -118,7 +120,7 @@ describe('createSimulation', () => {
   const baseConfig = {
     learningRate: 0.001,
     maxIteration: 2,
-    errorThreshold: 0.1,
+    tolerance: 0.1,
     lossFunction: 0,
     optimizer: 0,
     linkLengths: [1],
@@ -133,10 +135,11 @@ describe('createSimulation', () => {
     const finalState = simulation.step()
 
     expect(finalState.iteration).toBe(2)
+    expect(finalState.converged).toBe(false)
     expect(finalState.done).toBe(true)
   })
 
-  it('stops when the post-update error meets the threshold', () => {
+  it('stops when the end effector is within the tolerance', () => {
     const simulation = createSimulation({
       ...baseConfig,
       maxIteration: 500,
@@ -146,8 +149,85 @@ describe('createSimulation', () => {
     const state = simulation.step()
 
     expect(state.iteration).toBe(1)
-    expect(state.error).toBe(0)
+    expect(state.distance).toBe(0)
     expect(state.positions).toEqual([[1, 0]])
+    expect(state.converged).toBe(true)
     expect(state.done).toBe(true)
+  })
+
+  it('reports positions and distance in world units', () => {
+    const simulation = createSimulation({
+      ...baseConfig,
+      linkLengths: [2, 3],
+      initialAngles: [0, 0],
+      target: [0, 5],
+    })
+
+    const state = simulation.step()
+
+    expect(state.positions[1][0]).toBeCloseTo(5, 2)
+    expect(state.distance).toBeCloseTo(Math.SQRT2 * 5, 1)
+  })
+
+  it('takes the same angle steps regardless of the arm scale', () => {
+    const config = {
+      ...baseConfig,
+      learningRate: 0.5,
+      linkLengths: [1, 1],
+      initialAngles: restPose(2),
+      target: [0.5, 1],
+    }
+    const small = createSimulation(config).step()
+    const large = createSimulation({
+      ...config,
+      linkLengths: [100, 100],
+      target: [50, 100],
+    }).step()
+
+    expectVectorClose(large.angles, small.angles)
+  })
+
+  it('follows a new target set during the run', () => {
+    const simulation = createSimulation({
+      ...baseConfig,
+      maxIteration: 500,
+      learningRate: 1,
+      target: [0, 1],
+    })
+
+    simulation.setTarget([1, 0])
+    let state
+    do {
+      state = simulation.step()
+    } while (!state.done)
+
+    expect(state.converged).toBe(true)
+  })
+})
+
+describe('restPose', () => {
+  it('starts bent so the gradient is not zero along the arm', () => {
+    const pose = restPose(3)
+    const positions = forwardKinematics([1, 1, 1], pose)
+    const end = positions[2]
+    const target = [end[0] * 0.5, end[1] * 0.5]
+    const { gradient } = lossAndGradient(end, target, 0)
+    const gradients = jointGradient(endEffectorJacobian([1, 1, 1], pose), gradient)
+
+    expect(Math.max(...gradients.map(Math.abs))).toBeGreaterThan(0.01)
+  })
+})
+
+describe('workspace', () => {
+  it('is a ring for one link', () => {
+    expect(workspace([2])).toEqual({ inner: 2, outer: 2 })
+  })
+
+  it('reaches the base when no link is longer than the rest combined', () => {
+    expect(workspace([1, 1, 1])).toEqual({ inner: 0, outer: 3 })
+  })
+
+  it('leaves a hole when one link is longer than the rest combined', () => {
+    expect(workspace([3, 1])).toEqual({ inner: 2, outer: 4 })
   })
 })
