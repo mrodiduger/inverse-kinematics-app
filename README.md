@@ -1,22 +1,6 @@
 # Inverse Kinematics via Gradient Descent Optimization
 
-<p align="center">
-  <img src="https://img.icons8.com/?size=512&id=55494&format=png" width="100" alt="Robot arm icon" />
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/github/license/mrodiduger/inverse-kinematics-app?style=flat&color=0080ff" alt="license">
-  <img src="https://img.shields.io/github/last-commit/mrodiduger/inverse-kinematics-app?style=flat&logo=git&logoColor=white&color=0080ff" alt="last commit">
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/JavaScript-F7DF1E.svg?style=flat&logo=JavaScript&logoColor=black" alt="JavaScript">
-  <img src="https://img.shields.io/badge/Vue.js-4FC08D.svg?style=flat&logo=vuedotjs&logoColor=white" alt="Vue.js">
-  <img src="https://img.shields.io/badge/Vite-646CFF.svg?style=flat&logo=Vite&logoColor=white" alt="Vite">
-  <img src="https://img.shields.io/badge/Bootstrap-7952B3.svg?style=flat&logo=Bootstrap&logoColor=white" alt="Bootstrap">
-</p>
-
-This is a small, interactive visualization of inverse kinematics solved through gradient-descent optimization. Choose between one and six links, click a target on the canvas, and compare how different loss functions and optimizers move the arm.
+This is a small, interactive visualization of inverse kinematics solved through gradient-descent optimization. Choose between one and six links, click a target on the grid, and compare how different loss functions and optimizers move the arm.
 
 ## How it works
 
@@ -41,21 +25,13 @@ The loss gradient is multiplied by this Jacobian to obtain one gradient per join
 ## Repository structure
 
 ```text
-inverse-kinematics-app/
-├── .github/workflows/deploy-pages.yml
-├── client/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Config.vue
-│   │   │   └── Visualizer.vue
-│   │   ├── simulation.js
-│   │   ├── simulation.test.js
-│   │   ├── App.vue
-│   │   └── main.js
-│   ├── package.json
-│   └── vite.config.js
-├── docs/superpowers/
-└── README.md
+client/src/
+├── simulation.js        kinematics, losses, Jacobian, optimizers
+├── useSolver.js         runs the solver one step per animation frame
+├── view.js              world to canvas coordinates
+├── draw.js              canvas drawing
+├── components/          Vue components for the canvas, controls and notes
+└── App.vue              page layout
 ```
 
 ## Local development

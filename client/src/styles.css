@@ -1,0 +1,112 @@
+:root {
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --font-serif: 'Iowan Old Style', 'Charter', 'Bitstream Charter', 'Sitka Text', Cambria, Georgia, serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace;
+
+  --background: #f6f5f1;
+  --surface: #ffffff;
+  --ink: #1d2430;
+  --muted: #5d6573;
+  --rule: #d8d5cc;
+  --arm: #1f3a5f;
+  --target: #c2410c;
+  --canvas-background: #fbfaf7;
+  --canvas-grid: #ebe8e0;
+  --canvas-axis: #d3cfc4;
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #16191e;
+    --surface: #1d2128;
+    --ink: #e4e1d8;
+    --muted: #9aa1ad;
+    --rule: #343a44;
+    --arm: #9fbbe0;
+    --target: #f0894a;
+    --canvas-background: #1a1d23;
+    --canvas-grid: #242931;
+    --canvas-axis: #353b46;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+}
+
+@media (min-width: 640px) {
+  #app {
+    padding-inline: 2rem;
+  }
+}
+
+a {
+  color: var(--arm);
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+
+button.primary {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--surface);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+input[type='number'] {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+:focus-visible {
+  outline: 2px solid var(--target);
+  outline-offset: 2px;
+}
+
+.number {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
