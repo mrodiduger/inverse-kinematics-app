@@ -1,16 +1,14 @@
 <template>
   <figure class="loss-plot">
-    <figcaption>Distance to target <span class="muted">· log scale</span></figcaption>
-
     <div
       ref="frame"
       class="frame"
       @pointermove="onPointerMove"
       @pointerleave="hoverIteration = null"
     >
-      <p v-if="!runs.length" class="empty">Run the arm to plot how the distance shrinks.</p>
+      <p v-if="!runs.length" class="empty">&gt; no runs yet</p>
 
-      <svg v-else :width="width" :height="HEIGHT" role="img" :aria-label="summary">
+      <svg v-else :width="width" :height="height" role="img" :aria-label="summary">
         <g class="grid">
           <g v-for="tick in yTicks" :key="tick">
             <line :x1="MARGIN.left" :x2="width - MARGIN.right" :y1="yScale(tick)" :y2="yScale(tick)" />
@@ -18,8 +16,8 @@
               {{ formatTick(tick) }}
             </text>
           </g>
-          <text :x="MARGIN.left" :y="HEIGHT - 4">0</text>
-          <text :x="width - MARGIN.right" :y="HEIGHT - 4" text-anchor="end">{{ maxIteration }}</text>
+          <text :x="MARGIN.left" :y="height - 4">0</text>
+          <text :x="width - MARGIN.right" :y="height - 4" text-anchor="end">{{ maxIteration }}</text>
         </g>
 
         <line
@@ -44,7 +42,7 @@
           :x1="xScale(hoverIteration)"
           :x2="xScale(hoverIteration)"
           :y1="MARGIN.top"
-          :y2="HEIGHT - MARGIN.bottom"
+          :y2="height - MARGIN.bottom"
         />
         <template v-if="hoverIteration != null">
           <circle
@@ -64,7 +62,7 @@
         class="tooltip"
         :style="{ left: `${tooltipLeft}px` }"
       >
-        <div class="tooltip-title">Iteration {{ hoverIteration }}</div>
+        <div class="tooltip-title">iter {{ hoverIteration }}</div>
         <div v-for="run in runs" :key="run.label + run.isCurrent" class="tooltip-row">
           <svg class="key" width="18" height="6" aria-hidden="true">
             <line x1="1" x2="17" y1="3" y2="3" :class="['series', { current: run.isCurrent }]" :style="seriesStyle(run)" />
@@ -94,13 +92,13 @@ const props = defineProps({
   tolerance: { type: Number, required: true },
 })
 
-const HEIGHT = 160
-const MARGIN = { top: 8, right: 8, bottom: 20, left: 40 }
+const MARGIN = { top: 6, right: 8, bottom: 18, left: 40 }
 const SMALLEST_DISTANCE = 1e-4
 const OPTIMIZER_DASHES = ['none', '6 3', '1.5 3', '8 3 1.5 3']
 
 const frame = ref()
 const width = ref(280)
+const height = ref(160)
 const hoverIteration = ref(null)
 let resizeObserver = null
 
@@ -144,7 +142,7 @@ function xScale(iteration) {
 
 function yScale(distance) {
   const [low, high] = logRange.value
-  const plotHeight = HEIGHT - MARGIN.top - MARGIN.bottom
+  const plotHeight = height.value - MARGIN.top - MARGIN.bottom
   const value = Math.log10(Math.max(distance, SMALLEST_DISTANCE))
   return MARGIN.top + (1 - (value - low) / (high - low)) * plotHeight
 }
@@ -188,6 +186,7 @@ function onPointerMove(event) {
 onMounted(() => {
   resizeObserver = new ResizeObserver(([entry]) => {
     width.value = entry.contentRect.width
+    height.value = Math.max(entry.contentRect.height, 80)
   })
   resizeObserver.observe(frame.value)
 })
@@ -197,35 +196,26 @@ onUnmounted(() => resizeObserver.disconnect())
 
 <style scoped>
 .loss-plot {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   margin: 0;
-}
-
-figcaption {
-  margin-bottom: 0.35rem;
-}
-
-.muted {
-  color: var(--muted);
 }
 
 .frame {
   position: relative;
-  min-height: 160px;
+  flex: 1;
+  min-height: 80px;
 }
 
 .empty {
-  display: grid;
-  place-items: center;
-  height: 160px;
   margin: 0;
-  border: 1px dashed var(--rule);
   color: var(--muted);
-  font-size: 0.85rem;
-  text-align: center;
-  padding: 1rem;
 }
 
-svg {
+.frame > svg {
+  position: absolute;
+  inset: 0;
   display: block;
   overflow: visible;
 }
@@ -281,12 +271,11 @@ svg {
 .tooltip {
   position: absolute;
   top: 4px;
+  z-index: 1;
   min-width: 110px;
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  background: var(--surface);
-  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--accent);
+  background: var(--background);
   pointer-events: none;
 }
 
@@ -305,11 +294,18 @@ svg {
   overflow: visible;
 }
 
+.legend,
+.tooltip {
+  text-transform: lowercase;
+}
+
 .legend {
-  margin: 0.5rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+  margin: 0.35rem 0 0;
   padding: 0;
   list-style: none;
-  font-size: 0.8rem;
   color: var(--muted);
 }
 

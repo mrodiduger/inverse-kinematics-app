@@ -1,31 +1,35 @@
 <template>
-  <figure class="landscape">
-    <figcaption>Distance over every pose <span class="muted">· two links</span></figcaption>
-
-    <div v-if="linkLengths.length !== 2" class="empty">
-      With two links every pose is a point on a flat map of the two joint angles.
-      Choose 2 links to see it.
-    </div>
-
-    <div v-else class="chart">
-      <span class="axis-label y">elbow θ<sub>1</sub></span>
-      <div class="y-ticks number" aria-hidden="true"><span>π</span><span>0</span><span>−π</span></div>
-      <canvas
-        ref="canvas"
-        :class="{ interactive }"
-        role="img"
-        :aria-label="description"
-        @click="onClick"
-      ></canvas>
-      <div class="x-ticks number" aria-hidden="true"><span>−π</span><span>0</span><span>π</span></div>
-      <span class="axis-label x">shoulder θ<sub>0</sub></span>
-    </div>
-
-    <p v-if="linkLengths.length === 2" class="caption">
-      Lighter is closer. <span class="solution-key">×</span> marks an exact solution.
-      {{ interactive ? 'Click to start the arm from that pose.' : '' }}
+  <div class="landscape">
+    <p v-if="linkLengths.length !== 2" class="empty">
+      &gt; needs exactly two links<br>
+      with two links every pose is a point on a flat map of the two joint angles
     </p>
-  </figure>
+
+    <template v-else>
+      <div ref="area" class="area">
+        <div class="chart">
+          <div class="y-ticks number" aria-hidden="true"><span>π</span><span>0</span><span>−π</span></div>
+          <canvas
+            ref="canvas"
+            :class="{ interactive }"
+            :style="{ width: `${canvasSize}px`, height: `${canvasSize}px` }"
+            role="img"
+            :aria-label="description"
+            @click="onClick"
+          ></canvas>
+          <span></span>
+          <div class="x-ticks number" aria-hidden="true"><span>−π</span><span>0</span><span>π</span></div>
+        </div>
+      </div>
+
+      <dl class="key">
+        <div><dt class="shade" aria-hidden="true"></dt><dd>darker = closer</dd></div>
+        <div><dt class="cross">×</dt><dd>exact solution</dd></div>
+        <div><dt class="dot">●</dt><dd>current pose</dd></div>
+        <div v-if="interactive"><dt>↖</dt><dd>click: start here</dd></div>
+      </dl>
+    </template>
+  </div>
 </template>
 
 <script setup>
@@ -47,6 +51,9 @@ const props = defineProps({
 const emit = defineEmits(['set-pose'])
 
 const canvas = ref()
+const area = ref()
+const canvasSize = ref(160)
+const TICK_SPACE = 22
 let context = null
 let palette = null
 let heatmap = null
@@ -211,8 +218,10 @@ function parseHex(hex) {
 }
 
 function resize() {
-  if (!canvas.value) return
-  const size = Math.round(canvas.value.clientWidth * window.devicePixelRatio)
+  if (!canvas.value || !area.value) return
+  const { clientWidth, clientHeight } = area.value
+  canvasSize.value = Math.max(80, Math.floor(Math.min(clientWidth, clientHeight) - TICK_SPACE))
+  const size = Math.round(canvasSize.value * window.devicePixelRatio)
   canvas.value.width = size
   canvas.value.height = size
   heatmap = null
@@ -240,7 +249,7 @@ function setUp() {
   palette = readPalette(canvas.value)
   resizeObserver?.disconnect()
   resizeObserver = new ResizeObserver(resize)
-  resizeObserver.observe(canvas.value)
+  resizeObserver.observe(area.value)
 }
 
 onMounted(() => {
@@ -257,43 +266,33 @@ onUnmounted(() => {
 
 <style scoped>
 .landscape {
-  margin: 0;
-}
-
-figcaption {
-  margin-bottom: 0.35rem;
-}
-
-.muted {
-  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  height: 100%;
 }
 
 .empty {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1;
-  max-width: 320px;
-  padding: 1.5rem;
-  border: 1px dashed var(--rule);
+  margin: 0;
   color: var(--muted);
-  font-size: 0.85rem;
-  text-align: center;
+}
+
+.area {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
 }
 
 .chart {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 320px);
-  grid-template-rows: auto auto auto;
-  column-gap: 0.35rem;
-  align-items: stretch;
+  grid-template-columns: auto auto;
+  column-gap: 0.3rem;
+  width: max-content;
+  margin: 0 auto;
 }
 
 canvas {
-  grid-column: 3;
-  grid-row: 1;
   display: block;
-  width: 100%;
-  aspect-ratio: 1;
   border: 1px solid var(--rule);
 }
 
@@ -301,28 +300,7 @@ canvas.interactive {
   cursor: crosshair;
 }
 
-.axis-label {
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
-.axis-label.y {
-  grid-column: 1;
-  grid-row: 1;
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  text-align: center;
-}
-
-.axis-label.x {
-  grid-column: 3;
-  grid-row: 3;
-  text-align: center;
-}
-
 .y-ticks {
-  grid-column: 2;
-  grid-row: 1;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -330,8 +308,6 @@ canvas.interactive {
 }
 
 .x-ticks {
-  grid-column: 3;
-  grid-row: 2;
   display: flex;
   justify-content: space-between;
 }
@@ -343,14 +319,42 @@ canvas.interactive {
   line-height: 1.4;
 }
 
-.caption {
-  margin: 0.5rem 0 0;
+.key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+  flex: none;
+  margin: 0;
   color: var(--muted);
-  font-size: 0.8rem;
 }
 
-.solution-key {
+.key div {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.key dt {
+  width: 1.2em;
+  color: var(--accent);
+  text-align: center;
+}
+
+.key dd {
+  margin: 0;
+}
+
+.key .shade {
+  align-self: center;
+  height: 0.8em;
+  background: linear-gradient(90deg, var(--canvas-background), var(--landscape-high));
+  border: 1px solid var(--rule);
+}
+
+.key .cross {
   color: var(--target);
-  font-weight: 600;
+}
+
+.key .dot {
+  color: var(--arm);
 }
 </style>

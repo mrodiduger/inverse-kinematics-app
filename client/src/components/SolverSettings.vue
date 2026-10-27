@@ -1,12 +1,12 @@
 <template>
   <fieldset class="settings" :disabled="disabled">
-    <SegmentedControl v-model="linkCount" legend="Links" name="links" :options="linkOptions" />
-    <SegmentedControl v-model="lossFunction" legend="Loss" name="loss" :options="lossOptions" />
-    <SegmentedControl v-model="optimizer" legend="Optimizer" name="optimizer" :options="optimizerOptions" />
+    <SegmentedControl v-model="linkCount" legend="links" name="links" :options="linkOptions" />
+    <SegmentedControl v-model="lossFunction" legend="loss" name="loss" :options="lossOptions" />
+    <SegmentedControl v-model="optimizer" legend="optimizer" name="optimizer" :options="optimizerOptions" />
 
     <div>
       <label for="learning-rate" class="row">
-        Learning rate
+        <span class="label">learning rate</span>
         <output for="learning-rate" class="number">{{ learningRate }}</output>
       </label>
       <input
@@ -22,11 +22,11 @@
 
     <div class="pair">
       <label>
-        Max iterations
+        <span class="label">max iterations</span>
         <input v-model.number="maxIteration" type="number" min="10" max="5000" step="50" class="number">
       </label>
       <label>
-        Tolerance
+        <span class="label">tolerance</span>
         <input v-model.number="tolerance" type="number" min="0.001" max="0.5" step="0.005" class="number">
       </label>
     </div>
@@ -60,7 +60,7 @@ function setLearningRate(exponent) {
 <style scoped>
 .settings {
   display: grid;
-  gap: 1rem;
+  gap: 0.7rem;
   border: 0;
   padding: 0;
   margin: 0;
@@ -72,20 +72,22 @@ function setLearningRate(exponent) {
   justify-content: space-between;
 }
 
-input[type='range'] {
-  width: 100%;
-  accent-color: var(--ink);
+.row output {
+  color: var(--bright);
+}
+
+.label {
+  color: var(--muted);
 }
 
 .pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
+  gap: 0.6rem;
 }
 
 .pair input {
   display: block;
-  width: 100%;
-  margin-top: 0.35rem;
+  margin-top: 0.2rem;
 }
 </style>
