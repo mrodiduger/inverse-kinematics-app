@@ -32,7 +32,8 @@ client/src/
 ├── view.js              world to canvas coordinates
 ├── draw.js              canvas drawing
 ├── components/          Vue components for the canvas, controls and notes
-└── App.vue              page layout
+├── App.vue              simulator page
+└── TheoryPage.vue       the maths behind it, served at /theory/
 ```
 
 ## Local development

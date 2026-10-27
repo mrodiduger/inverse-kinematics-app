@@ -29,14 +29,14 @@ const model = defineModel({ required: true })
 }
 
 legend {
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.2rem;
+  padding: 0;
+  color: var(--muted);
 }
 
 .options {
   display: flex;
   border: 1px solid var(--rule);
-  border-radius: 4px;
-  overflow: hidden;
 }
 
 label {
@@ -58,24 +58,28 @@ input {
 
 span {
   display: block;
-  padding: 0.35rem 0.4rem;
+  padding: 0.15rem 0.3rem;
   text-align: center;
-  font-size: 0.85rem;
+  text-transform: lowercase;
   white-space: nowrap;
   color: var(--muted);
 }
 
+label:hover span {
+  color: var(--bright);
+}
+
 input:checked + span {
-  background: var(--ink);
-  color: var(--surface);
+  background: var(--accent);
+  color: var(--background);
 }
 
 input:focus-visible + span {
-  outline: 2px solid var(--target);
-  outline-offset: -2px;
+  outline: 1px solid var(--bright);
+  outline-offset: -3px;
 }
 
 input:disabled + span {
-  opacity: 0.5;
+  opacity: 0.4;
 }
 </style>
