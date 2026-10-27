@@ -137,7 +137,8 @@ export function createOptimizer(optimizerId, parameterCount) {
 }
 
 // Solves a copy scaled to a total reach of 1, so one learning rate works for
-// any arm size. Results are reported in world units.
+// any arm size. Positions and distance are reported in world units; the
+// step details stay in the scaled units the solver used.
 export function createSimulation(config) {
   const reach = config.linkLengths.reduce((sum, length) => sum + length, 0)
   const linkLengths = config.linkLengths.map((length) => length / reach)
@@ -163,6 +164,7 @@ export function createSimulation(config) {
       )
       const jacobian = endEffectorJacobian(linkLengths, angles)
       const gradients = jointGradient(jacobian, endGradient)
+      const previousAngles = angles
 
       angles = optimizer.step(angles, gradients, config.learningRate)
       iteration += 1
@@ -179,7 +181,15 @@ export function createSimulation(config) {
       return {
         positions: nextPositions.map(([x, y]) => [x * reach, y * reach]),
         angles: angles.slice(),
-        gradients,
+        details: {
+          previousAngles,
+          endPosition,
+          target,
+          endGradient,
+          jacobian,
+          gradients,
+          angleStep: angles.map((angle, index) => angle - previousAngles[index]),
+        },
         loss,
         distance,
         iteration,

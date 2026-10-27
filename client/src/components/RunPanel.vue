@@ -1,10 +1,15 @@
 <template>
   <div class="run-panel">
     <div class="buttons">
-      <button v-if="!isRunning" type="button" class="primary" :disabled="!hasTarget" @click="emit('run')">Run</button>
-      <button v-else type="button" class="primary" @click="emit('stop')">Stop</button>
-      <button type="button" @click="emit('reset')">Reset pose</button>
+      <button v-if="!isRunning" type="button" class="primary" :disabled="!hasTarget" @click="emit('run')">
+        {{ isPaused ? 'Resume' : 'Run' }}
+      </button>
+      <button v-else type="button" class="primary" @click="emit('pause')">Pause</button>
+      <button type="button" :disabled="!hasTarget || isRunning" @click="emit('step')">Step</button>
+      <button type="button" @click="emit('reset')">Reset</button>
     </div>
+
+    <SegmentedControl v-model="stepsPerSecond" legend="Speed" name="speed" :options="SPEED_OPTIONS" />
 
     <dl class="readouts">
       <div>
@@ -23,9 +28,17 @@
 
 <script setup>
 import { computed } from 'vue'
+import SegmentedControl from './SegmentedControl.vue'
+
+const SPEED_OPTIONS = [
+  { value: 4, label: 'Slow' },
+  { value: 30, label: 'Normal' },
+  { value: 240, label: 'Fast' },
+]
 
 const props = defineProps({
   isRunning: { type: Boolean, required: true },
+  isPaused: { type: Boolean, required: true },
   hasTarget: { type: Boolean, required: true },
   isTargetReachable: { type: Boolean, required: true },
   iteration: { type: Number, required: true },
@@ -33,16 +46,18 @@ const props = defineProps({
   outcome: { type: String, default: null },
 })
 
-const emit = defineEmits(['run', 'stop', 'reset'])
+const emit = defineEmits(['run', 'pause', 'step', 'reset'])
+
+const stepsPerSecond = defineModel('stepsPerSecond', { required: true })
 
 const status = computed(() => {
   if (!props.hasTarget) return 'Click anywhere on the grid to place a target.'
   if (props.outcome === 'converged') return `Reached the target in ${props.iteration} iterations.`
   if (!props.isTargetReachable) return 'This target is out of reach. The best the arm can do is point at it.'
   if (props.isRunning) return 'Running.'
+  if (props.isPaused) return 'Paused. Press Step to go one iteration at a time.'
   if (props.outcome === 'limit') return 'Hit the iteration limit before reaching the target.'
-  if (props.outcome === 'stopped') return 'Stopped.'
-  return 'Press Run to start.'
+  return 'Press Run to animate, or Step to go one iteration at a time.'
 })
 </script>
 
@@ -54,7 +69,7 @@ const status = computed(() => {
 
 .buttons {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.3fr 1fr 1fr;
   gap: 0.5rem;
 }
 

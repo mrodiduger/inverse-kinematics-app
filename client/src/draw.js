@@ -15,9 +15,10 @@ export function readPalette(element) {
 }
 
 const GHOST_COUNT = 8
+const MAX_ARC_SPAN = 1.2
 
 export function drawScene(ctx, view, scene, palette, pixelRatio = 1) {
-  const { positions, target, reach, path } = scene
+  const { positions, target, reach, path, jointSteps } = scene
   const px = (value) => value * pixelRatio
 
   ctx.clearRect(0, 0, view.width, view.height)
@@ -27,6 +28,7 @@ export function drawScene(ctx, view, scene, palette, pixelRatio = 1) {
   drawTrail(ctx, view, path, palette, px)
   if (target) drawErrorVector(ctx, view, positions, target, palette, px)
   drawArm(ctx, view, positions, palette, px)
+  if (jointSteps) drawJointSteps(ctx, view, positions, jointSteps, palette, px)
   if (target) drawTarget(ctx, view, target, palette, px)
 }
 
@@ -154,6 +156,46 @@ function drawArm(ctx, view, positions, palette, px) {
   ctx.beginPath()
   ctx.arc(endX, endY, px(4), 0, 2 * Math.PI)
   ctx.fill()
+}
+
+// Arc lengths are relative to the largest step, so they compare joints
+// within one iteration rather than show absolute angles.
+function drawJointSteps(ctx, view, positions, jointSteps, palette, px) {
+  const largest = Math.max(...jointSteps.map(Math.abs))
+  if (largest === 0) return
+
+  const joints = [[0, 0], ...positions.slice(0, -1)]
+  const radius = px(28)
+  ctx.strokeStyle = palette.target
+  ctx.fillStyle = palette.target
+  ctx.lineWidth = px(1.5)
+
+  jointSteps.forEach((angleStep, index) => {
+    const span = MAX_ARC_SPAN * Math.abs(angleStep) / largest
+    if (span < 0.05) return
+
+    const [jointX, jointY] = joints[index]
+    const [tipX, tipY] = positions[index]
+    const linkAngle = Math.atan2(tipY - jointY, tipX - jointX)
+    const direction = Math.sign(angleStep)
+    const [centerX, centerY] = view.toScreen(joints[index])
+
+    ctx.beginPath()
+    ctx.arc(centerX, centerY, radius, -(linkAngle - direction * span), -linkAngle, direction > 0)
+    ctx.stroke()
+
+    const endX = centerX + radius * Math.cos(linkAngle)
+    const endY = centerY - radius * Math.sin(linkAngle)
+    const tangentX = -Math.sin(linkAngle) * direction
+    const tangentY = -Math.cos(linkAngle) * direction
+    const size = px(6)
+    ctx.beginPath()
+    ctx.moveTo(endX + tangentX * size, endY + tangentY * size)
+    ctx.lineTo(endX - tangentX * size + tangentY * size * 0.6, endY - tangentY * size - tangentX * size * 0.6)
+    ctx.lineTo(endX - tangentX * size - tangentY * size * 0.6, endY - tangentY * size + tangentX * size * 0.6)
+    ctx.closePath()
+    ctx.fill()
+  })
 }
 
 function drawTarget(ctx, view, target, palette, px) {

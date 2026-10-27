@@ -14,20 +14,24 @@
         :target="target"
         :reach="reach"
         :path="path"
+        :joint-steps="isPaused && lastStep ? lastStep.details.angleStep : null"
         @place-target="placeTarget"
       />
     </section>
 
     <aside class="panel">
       <RunPanel
+        v-model:steps-per-second="settings.stepsPerSecond"
         :is-running="isRunning"
+        :is-paused="isPaused"
         :has-target="target != null"
         :is-target-reachable="isTargetReachable"
         :iteration="iteration"
         :distance="distance"
         :outcome="outcome"
         @run="run"
-        @stop="stop"
+        @pause="pause"
+        @step="step"
         @reset="reset"
       />
       <LossPlot :runs="runs" :tolerance="settings.tolerance" />
@@ -42,7 +46,10 @@
       />
     </aside>
 
-    <LessonNotes class="notes-area" />
+    <div class="reading">
+      <StepBreakdown :step="lastStep" />
+      <LessonNotes />
+    </div>
   </main>
 
   <footer class="footer">
@@ -57,6 +64,7 @@ import LessonNotes from './components/LessonNotes.vue'
 import LossPlot from './components/LossPlot.vue'
 import RunPanel from './components/RunPanel.vue'
 import SolverSettings from './components/SolverSettings.vue'
+import StepBreakdown from './components/StepBreakdown.vue'
 import { OPTIMIZERS } from './simulation'
 import { useSolver } from './useSolver'
 
@@ -67,6 +75,7 @@ const settings = reactive({
   learningRate: OPTIMIZERS[0].learningRate,
   maxIteration: 500,
   tolerance: 0.01,
+  stepsPerSecond: 30,
 })
 
 watch(() => settings.optimizer, (optimizer) => {
@@ -78,6 +87,8 @@ const {
   iteration,
   outcome,
   isRunning,
+  isPaused,
+  lastStep,
   positions,
   path,
   runs,
@@ -85,7 +96,8 @@ const {
   distance,
   isTargetReachable,
   run,
-  stop,
+  pause,
+  step,
   reset,
   placeTarget,
 } = useSolver(settings)
@@ -128,7 +140,9 @@ const {
   gap: 1.5rem;
 }
 
-.notes-area {
+.reading {
+  display: grid;
+  gap: 2.5rem;
   margin-top: 1rem;
 }
 
@@ -145,7 +159,7 @@ const {
     column-gap: 2rem;
   }
 
-  .notes-area {
+  .reading {
     grid-column: 1;
   }
 }

@@ -187,6 +187,25 @@ describe('createSimulation', () => {
     expectVectorClose(large.angles, small.angles)
   })
 
+  it('reports the intermediate values of each step', () => {
+    const simulation = createSimulation({
+      ...baseConfig,
+      learningRate: 0.5,
+      linkLengths: [1, 1],
+      initialAngles: [0, Math.PI / 2],
+      target: [1, 0],
+    })
+
+    const { details, angles } = simulation.step()
+
+    expectVectorClose(details.endPosition, [0.5, 0.5])
+    expectVectorClose(details.endGradient, [0, 0.5])
+    expectMatrixClose(details.jacobian, [[-0.5, 0.5], [-0.5, 0]])
+    expectVectorClose(details.gradients, [0.25, 0])
+    expectVectorClose(details.angleStep, [-0.125, 0])
+    expectVectorClose(angles, [-0.125, Math.PI / 2])
+  })
+
   it('follows a new target set during the run', () => {
     const simulation = createSimulation({
       ...baseConfig,

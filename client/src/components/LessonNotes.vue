@@ -15,16 +15,12 @@
 
     <h2>Forward kinematics</h2>
     <p>
-      Each joint angle <var>θ<sub>i</sub></var> is measured relative to the previous link, so the
-      direction of link <var>i</var> is the running sum
-      <var>φ<sub>i</sub></var> = <var>θ<sub>0</sub></var> + … + <var>θ<sub>i</sub></var>.
+      Each joint angle <TexMath expression="\theta_i" /> is measured relative to the previous link,
+      so the direction of link <TexMath expression="i" /> is the running sum
+      <TexMath expression="\varphi_i = \theta_0 + \dots + \theta_i" />.
       The tip is the sum of the link vectors:
     </p>
-    <p class="formula">
-      <var>x</var> = Σ <var>l<sub>i</sub></var> cos <var>φ<sub>i</sub></var>,
-      &emsp;
-      <var>y</var> = Σ <var>l<sub>i</sub></var> sin <var>φ<sub>i</sub></var>
-    </p>
+    <TexMath display expression="x = \sum_i l_i \cos\varphi_i, \qquad y = \sum_i l_i \sin\varphi_i" />
 
     <h2>Turning it into a minimization</h2>
     <p>
@@ -36,21 +32,34 @@
 
     <h2>Following the gradient</h2>
     <p>
-      Nudging joint <var>j</var> swings everything beyond it around that joint, so the tip moves at
-      right angles to the line from the joint to the tip. Collecting those directions for every
-      joint gives the Jacobian <var>J</var>. The chain rule turns the loss gradient at the tip into
-      one number per joint, <var>J</var><sup>T</sup> ∇<var>L</var>, and each step moves the angles
-      a little against it.
+      Nudging joint <TexMath expression="j" /> swings everything beyond it around that joint, so the
+      tip moves at right angles to the line from the joint to the tip. Collecting those directions
+      for every joint gives the Jacobian:
+    </p>
+    <TexMath
+      display
+      expression="J_{:,j} = \begin{bmatrix} -\sum_{i \ge j} l_i \sin\varphi_i \\ \phantom{-}\sum_{i \ge j} l_i \cos\varphi_i \end{bmatrix}"
+    />
+    <p>
+      The chain rule turns the loss gradient at the tip into one number per joint,
+      <TexMath expression="g = J^\top \nabla_p L" />, and each step moves the angles a little
+      against it. Press <strong>Step</strong> to see every one of these values for the current pose.
+      The arcs at the joints show which way each one turned, and by how much compared with the others.
     </p>
     <p>
       The optimizers differ only in how big each step is. SGD scales the raw gradient. Adagrad,
       RMSprop and Adam divide by a running measure of past gradients, so they take steps of roughly
       the learning rate in radians, whatever the size of the gradient.
     </p>
+    <p>
+      The solver works on a copy of the arm scaled to a total reach of 1. Without that, the gradient
+      grows with the arm's length and a learning rate that works for two links would throw a
+      six-link arm around.
+    </p>
 
     <h2>Things to try</h2>
     <ul>
-      <li>Compare optimizers fairly: press Reset pose, run, change the optimizer, reset and run again. Earlier runs stay in the plot in grey.</li>
+      <li>Compare optimizers fairly: press Reset, run, change the optimizer, reset and run again. Earlier runs stay in the plot in grey.</li>
       <li>Place a target outside the arm's reach and watch it settle on pointing straight at it.</li>
       <li>Push the SGD learning rate past 3 and watch the arm overshoot and swing back and forth.</li>
       <li>Compare absolute error with squared error. Its gradient never shrinks, so near the target it keeps stepping past.</li>
@@ -58,6 +67,10 @@
     </ul>
   </article>
 </template>
+
+<script setup>
+import TexMath from './TexMath.vue'
+</script>
 
 <style scoped>
 .notes {
@@ -84,13 +97,4 @@
   padding-left: 1.2rem;
 }
 
-.formula {
-  font-family: var(--font-serif);
-  font-size: 1.05rem;
-  text-align: center;
-}
-
-var {
-  font-family: var(--font-serif);
-}
 </style>
