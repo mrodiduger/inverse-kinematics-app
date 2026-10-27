@@ -57,9 +57,28 @@
       six-link arm around.
     </p>
 
+    <h2>The landscape</h2>
+    <p>
+      With two links, every pose is a point on a square map: shoulder angle across, elbow angle up.
+      Shading each point by its distance to the target gives the surface gradient descent is walking
+      on. Most reachable targets have two exact solutions, elbow one way and elbow the other, marked
+      with crosses. Which one the arm finds depends only on where it starts, so click the map to try
+      other starting poses.
+    </p>
+    <p>
+      The horizontal lines through elbow 0 and ±π are the straight and folded arm. Along them the
+      Jacobian loses a column's worth of information and the gradient can vanish for targets in line
+      with the arm.
+    </p>
+    <p>
+      <strong>Race all four optimizers</strong> runs SGD, Adam, Adagrad and RMSprop from the same pose
+      to the same target, each with its default learning rate, and draws all four paths on the arm,
+      the plot and the map.
+    </p>
+
     <h2>Things to try</h2>
     <ul>
-      <li>Compare optimizers fairly: press Reset, run, change the optimizer, reset and run again. Earlier runs stay in the plot in grey.</li>
+      <li>Compare runs: press Reset, run, change a setting, reset and run again. Earlier runs stay in the plot in grey.</li>
       <li>Place a target outside the arm's reach and watch it settle on pointing straight at it.</li>
       <li>Push the SGD learning rate past 3 and watch the arm overshoot and swing back and forth.</li>
       <li>Compare absolute error with squared error. Its gradient never shrinks, so near the target it keeps stepping past.</li>

@@ -21,6 +21,22 @@ export function workspace(linkLengths) {
   return { inner, outer }
 }
 
+// The exact answers for a two-link arm: elbow one way and elbow the other.
+export function twoLinkSolutions([first, second], [x, y]) {
+  const cosElbow = (x ** 2 + y ** 2 - first ** 2 - second ** 2) / (2 * first * second)
+  if (Math.abs(cosElbow) > 1) return []
+
+  return [1, -1].map((side) => {
+    const elbow = side * Math.acos(cosElbow)
+    const shoulder = Math.atan2(y, x) - Math.atan2(second * Math.sin(elbow), first + second * Math.cos(elbow))
+    return [wrapAngle(shoulder), elbow]
+  })
+}
+
+export function wrapAngle(angle) {
+  return angle - 2 * Math.PI * Math.floor((angle + Math.PI) / (2 * Math.PI))
+}
+
 export function endEffectorJacobian(linkLengths, jointAngles) {
   const cumulativeAngles = []
   let angle = 0

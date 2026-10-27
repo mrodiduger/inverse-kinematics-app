@@ -9,23 +9,38 @@ const PALETTE_VARIABLES = {
 
 export function readPalette(element) {
   const style = getComputedStyle(element)
-  return Object.fromEntries(
-    Object.entries(PALETTE_VARIABLES).map(([key, name]) => [key, style.getPropertyValue(name).trim()]),
-  )
+  const read = (name) => style.getPropertyValue(name).trim()
+  return {
+    ...Object.fromEntries(Object.entries(PALETTE_VARIABLES).map(([key, name]) => [key, read(name)])),
+    ink: read('--ink'),
+    background: read('--canvas-background'),
+    landscapeHigh: read('--landscape-high'),
+    optimizers: [0, 1, 2, 3].map((index) => read(`--optimizer-${index}`)),
+  }
 }
 
 const GHOST_COUNT = 8
 const MAX_ARC_SPAN = 1.2
 
 export function drawScene(ctx, view, scene, palette, pixelRatio = 1) {
-  const { positions, target, reach, path, jointSteps } = scene
+  const { positions, target, reach, path, jointSteps, racers = [] } = scene
   const px = (value) => value * pixelRatio
 
   ctx.clearRect(0, 0, view.width, view.height)
   drawWorkspace(ctx, view, reach, palette, px)
   drawGrid(ctx, view, palette, px)
+
+  if (racers.length) {
+    ctx.globalAlpha = 0.25
+    drawArm(ctx, view, positions, palette, px)
+    ctx.globalAlpha = 1
+    drawRacers(ctx, view, racers, palette, px)
+    if (target) drawTarget(ctx, view, target, palette, px)
+    return
+  }
+
   drawGhosts(ctx, view, path, palette, px)
-  drawTrail(ctx, view, path, palette, px)
+  drawTrail(ctx, view, path, palette.arm, px)
   if (target) drawErrorVector(ctx, view, positions, target, palette, px)
   drawArm(ctx, view, positions, palette, px)
   if (jointSteps) drawJointSteps(ctx, view, positions, jointSteps, palette, px)
@@ -97,10 +112,10 @@ function drawGhosts(ctx, view, path, palette, px) {
   ctx.globalAlpha = 1
 }
 
-function drawTrail(ctx, view, path, palette, px) {
+function drawTrail(ctx, view, path, color, px) {
   if (path.length < 2) return
 
-  ctx.strokeStyle = palette.arm
+  ctx.strokeStyle = color
   ctx.globalAlpha = 0.55
   ctx.lineWidth = px(1.5)
   ctx.beginPath()
@@ -111,6 +126,54 @@ function drawTrail(ctx, view, path, palette, px) {
   })
   ctx.stroke()
   ctx.globalAlpha = 1
+}
+
+function drawRacers(ctx, view, racers, palette, px) {
+  racers.forEach(({ path, optimizer }) => drawTrail(ctx, view, path, palette.optimizers[optimizer], px))
+
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.lineWidth = px(3)
+  racers.forEach(({ positions, optimizer }) => {
+    ctx.strokeStyle = palette.optimizers[optimizer]
+    ctx.beginPath()
+    ctx.moveTo(...view.toScreen([0, 0]))
+    positions.forEach((point) => ctx.lineTo(...view.toScreen(point)))
+    ctx.stroke()
+  })
+
+  drawRacerLabels(ctx, view, racers, palette, px)
+}
+
+// Optimizer colours are hard to tell apart for some colour-blind readers,
+// so every arm is also labelled by name at its tip.
+function drawRacerLabels(ctx, view, racers, palette, px) {
+  const lineHeight = px(15)
+  const labels = racers
+    .map(({ positions, name, optimizer }) => {
+      const [x, y] = view.toScreen(positions[positions.length - 1])
+      return { x: x + px(10), y: y - px(10), name, optimizer }
+    })
+    .sort((first, second) => first.y - second.y)
+
+  labels.forEach((label, index) => {
+    if (index > 0) label.y = Math.max(label.y, labels[index - 1].y + lineHeight)
+  })
+
+  ctx.font = `${px(12)}px system-ui, sans-serif`
+  ctx.textBaseline = 'middle'
+  ctx.lineWidth = px(3)
+  labels.forEach(({ x, y, name, optimizer }) => {
+    ctx.fillStyle = palette.optimizers[optimizer]
+    ctx.beginPath()
+    ctx.arc(x + px(3), y, px(3.5), 0, 2 * Math.PI)
+    ctx.fill()
+
+    ctx.strokeStyle = palette.background
+    ctx.strokeText(name, x + px(11), y)
+    ctx.fillStyle = palette.ink
+    ctx.fillText(name, x + px(11), y)
+  })
 }
 
 function drawErrorVector(ctx, view, positions, target, palette, px) {

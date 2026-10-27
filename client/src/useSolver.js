@@ -181,6 +181,15 @@ export function useSolver(settings) {
     lastStep.value = null
   }
 
+  function setPose(nextAngles) {
+    if (isRunning.value) return
+    finish(null)
+    archiveRun()
+    angles.value = nextAngles
+    iteration.value = 0
+    lastStep.value = null
+  }
+
   function placeTarget(point) {
     target.value = point
     simulation?.setTarget(point)
@@ -196,6 +205,8 @@ export function useSolver(settings) {
   onUnmounted(() => finish(null))
 
   return {
+    angles,
+    linkLengths,
     target,
     iteration,
     outcome,
@@ -212,6 +223,7 @@ export function useSolver(settings) {
     pause,
     step,
     reset,
+    setPose,
     placeTarget,
   }
 }

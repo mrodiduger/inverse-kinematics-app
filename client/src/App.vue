@@ -15,6 +15,7 @@
         :reach="reach"
         :path="path"
         :joint-steps="isPaused && lastStep ? lastStep.details.angleStep : null"
+        :racers="racers"
         @place-target="placeTarget"
       />
     </section>
@@ -23,6 +24,7 @@
       <RunPanel
         v-model:steps-per-second="settings.stepsPerSecond"
         :is-running="isRunning"
+        :is-racing="isRacing"
         :is-paused="isPaused"
         :has-target="target != null"
         :is-target-reachable="isTargetReachable"
@@ -33,8 +35,9 @@
         @pause="pause"
         @step="step"
         @reset="reset"
+        @race="startRace"
+        @stop-race="stopRace"
       />
-      <LossPlot :runs="runs" :tolerance="settings.tolerance" />
       <SolverSettings
         v-model:link-count="settings.linkCount"
         v-model:loss-function="settings.lossFunction"
@@ -42,9 +45,22 @@
         v-model:learning-rate="settings.learningRate"
         v-model:max-iteration="settings.maxIteration"
         v-model:tolerance="settings.tolerance"
-        :disabled="isRunning"
+        :disabled="isBusy"
       />
     </aside>
+
+    <section class="figures" aria-label="Charts">
+      <LossPlot :runs="plotRuns" :tolerance="settings.tolerance" />
+      <LossLandscape
+        :link-lengths="linkLengths"
+        :angles="angles"
+        :target="target"
+        :path="path"
+        :racers="racers"
+        :interactive="!isBusy"
+        @set-pose="setPose"
+      />
+    </section>
 
     <div class="reading">
       <StepBreakdown :step="lastStep" />
@@ -58,14 +74,16 @@
 </template>
 
 <script setup>
-import { reactive, watch } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import ArmCanvas from './components/ArmCanvas.vue'
 import LessonNotes from './components/LessonNotes.vue'
+import LossLandscape from './components/LossLandscape.vue'
 import LossPlot from './components/LossPlot.vue'
 import RunPanel from './components/RunPanel.vue'
 import SolverSettings from './components/SolverSettings.vue'
 import StepBreakdown from './components/StepBreakdown.vue'
 import { OPTIMIZERS } from './simulation'
+import { useRace } from './useRace'
 import { useSolver } from './useSolver'
 
 const settings = reactive({
@@ -82,7 +100,10 @@ watch(() => settings.optimizer, (optimizer) => {
   settings.learningRate = OPTIMIZERS[optimizer].learningRate
 })
 
+const solver = useSolver(settings)
 const {
+  angles,
+  linkLengths,
   target,
   iteration,
   outcome,
@@ -99,8 +120,23 @@ const {
   pause,
   step,
   reset,
+  setPose,
   placeTarget,
-} = useSolver(settings)
+} = solver
+
+const { racers, isRacing, start: startRace, stop: stopRace } = useRace(settings, solver)
+
+const isBusy = computed(() => isRunning.value || isRacing.value)
+
+const plotRuns = computed(() => {
+  if (!racers.value.length) return runs.value
+  return racers.value.map((racer) => ({
+    label: racer.converged ? `${racer.label}, reached in ${racer.distances.length - 1}` : racer.label,
+    distances: racer.distances,
+    optimizer: racer.optimizer,
+    isCurrent: true,
+  }))
+})
 </script>
 
 <style scoped>
@@ -128,8 +164,8 @@ const {
 }
 
 .stage {
-  height: min(70vh, 720px);
-  min-height: 320px;
+  aspect-ratio: 1;
+  max-height: 75vh;
   border: 1px solid var(--rule);
   overflow: hidden;
 }
@@ -138,6 +174,18 @@ const {
   display: grid;
   align-content: start;
   gap: 1.5rem;
+}
+
+.figures {
+  display: grid;
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (min-width: 640px) {
+  .figures {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
 }
 
 .reading {
@@ -154,11 +202,22 @@ const {
 }
 
 @media (min-width: 960px) {
+  .stage {
+    aspect-ratio: auto;
+    height: min(70vh, 720px);
+    max-height: none;
+  }
+
   .layout {
     grid-template-columns: minmax(0, 1fr) 19rem;
     column-gap: 2rem;
   }
 
+  .panel {
+    grid-row: span 2;
+  }
+
+  .figures,
   .reading {
     grid-column: 1;
   }

@@ -14,6 +14,12 @@
   --canvas-grid: #ebe8e0;
   --canvas-axis: #d3cfc4;
   --canvas-reach: #f1efe8;
+  --landscape-high: #a9adb5;
+
+  --optimizer-0: #2a78d6;
+  --optimizer-1: #e87ba4;
+  --optimizer-2: #008300;
+  --optimizer-3: #eda100;
 
   color-scheme: light dark;
 }
@@ -31,6 +37,12 @@
     --canvas-grid: #242931;
     --canvas-axis: #353b46;
     --canvas-reach: #1f232a;
+    --landscape-high: #505864;
+
+    --optimizer-0: #3987e5;
+    --optimizer-1: #d55181;
+    --optimizer-2: #008300;
+    --optimizer-3: #c98500;
   }
 }
 

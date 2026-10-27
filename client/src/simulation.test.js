@@ -7,7 +7,9 @@ import {
   jointGradient,
   lossAndGradient,
   restPose,
+  twoLinkSolutions,
   workspace,
+  wrapAngle,
 } from './simulation'
 
 function expectVectorClose(actual, expected) {
@@ -248,5 +250,30 @@ describe('workspace', () => {
 
   it('leaves a hole when one link is longer than the rest combined', () => {
     expect(workspace([3, 1])).toEqual({ inner: 2, outer: 4 })
+  })
+})
+
+describe('twoLinkSolutions', () => {
+  it('returns two poses that both reach the target', () => {
+    const target = [0.8, 1.1]
+    const solutions = twoLinkSolutions([1, 1], target)
+
+    expect(solutions).toHaveLength(2)
+    solutions.forEach((angles) => {
+      expectVectorClose(forwardKinematics([1, 1], angles)[1], target)
+    })
+    expect(solutions[0][1]).toBeCloseTo(-solutions[1][1], 10)
+  })
+
+  it('returns nothing for a target out of reach', () => {
+    expect(twoLinkSolutions([1, 1], [3, 0])).toEqual([])
+  })
+})
+
+describe('wrapAngle', () => {
+  it('maps angles into [-π, π)', () => {
+    expect(wrapAngle(3 * Math.PI / 2)).toBeCloseTo(-Math.PI / 2, 10)
+    expect(wrapAngle(-3 * Math.PI / 2)).toBeCloseTo(Math.PI / 2, 10)
+    expect(wrapAngle(0.5)).toBe(0.5)
   })
 })

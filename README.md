@@ -1,6 +1,6 @@
 # Inverse Kinematics via Gradient Descent Optimization
 
-This is a small, interactive visualization of inverse kinematics solved through gradient-descent optimization. Choose between one and six links, click a target on the grid, and compare how different loss functions and optimizers move the arm.
+This is a small, interactive visualization of inverse kinematics solved through gradient-descent optimization. Choose between one and six links, click a target on the grid, and compare how different loss functions and optimizers move the arm. You can step through single iterations with every intermediate value shown, race all four optimizers from the same pose, and, for two links, see the whole loss landscape with the exact solutions marked.
 
 ## How it works
 
@@ -27,7 +27,8 @@ The loss gradient is multiplied by this Jacobian to obtain one gradient per join
 ```text
 client/src/
 ├── simulation.js        kinematics, losses, Jacobian, optimizers
-├── useSolver.js         runs the solver one step per animation frame
+├── useSolver.js         runs, pauses and steps the solver
+├── useRace.js           runs all four optimizers side by side
 ├── view.js              world to canvas coordinates
 ├── draw.js              canvas drawing
 ├── components/          Vue components for the canvas, controls and notes

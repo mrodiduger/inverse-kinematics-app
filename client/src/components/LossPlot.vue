@@ -35,6 +35,7 @@
           :key="run.label + run.isCurrent"
           :d="linePath(run.distances)"
           :class="['series', { current: run.isCurrent }]"
+          :style="seriesStyle(run)"
         />
 
         <line
@@ -53,6 +54,7 @@
             :cy="yScale(run.distances[hoverIteration])"
             r="4"
             :class="['marker', { current: run.isCurrent }]"
+            :style="markerStyle(run)"
           />
         </template>
       </svg>
@@ -64,7 +66,9 @@
       >
         <div class="tooltip-title">Iteration {{ hoverIteration }}</div>
         <div v-for="run in runs" :key="run.label + run.isCurrent" class="tooltip-row">
-          <span :class="['key', { current: run.isCurrent }]"></span>
+          <svg class="key" width="18" height="6" aria-hidden="true">
+            <line x1="1" x2="17" y1="3" y2="3" :class="['series', { current: run.isCurrent }]" :style="seriesStyle(run)" />
+          </svg>
           <span class="number">{{ formatValue(run.distances[hoverIteration]) }}</span>
         </div>
       </div>
@@ -72,7 +76,9 @@
 
     <ul v-if="runs.length > 1" class="legend">
       <li v-for="run in runs" :key="run.label + run.isCurrent">
-        <span :class="['key', { current: run.isCurrent }]"></span>
+        <svg class="key" width="18" height="6" aria-hidden="true">
+            <line x1="1" x2="17" y1="3" y2="3" :class="['series', { current: run.isCurrent }]" :style="seriesStyle(run)" />
+          </svg>
         {{ run.label }}
       </li>
     </ul>
@@ -91,6 +97,7 @@ const props = defineProps({
 const HEIGHT = 160
 const MARGIN = { top: 8, right: 8, bottom: 20, left: 40 }
 const SMALLEST_DISTANCE = 1e-4
+const OPTIMIZER_DASHES = ['none', '6 3', '1.5 3', '8 3 1.5 3']
 
 const frame = ref()
 const width = ref(280)
@@ -140,6 +147,20 @@ function yScale(distance) {
   const plotHeight = HEIGHT - MARGIN.top - MARGIN.bottom
   const value = Math.log10(Math.max(distance, SMALLEST_DISTANCE))
   return MARGIN.top + (1 - (value - low) / (high - low)) * plotHeight
+}
+
+function seriesStyle(run) {
+  if (run.optimizer == null) return null
+  return {
+    stroke: `var(--optimizer-${run.optimizer})`,
+    strokeDasharray: OPTIMIZER_DASHES[run.optimizer],
+    strokeWidth: 2,
+    opacity: 1,
+  }
+}
+
+function markerStyle(run) {
+  return run.optimizer == null ? null : { fill: `var(--optimizer-${run.optimizer})` }
 }
 
 function linePath(distances) {
@@ -280,18 +301,8 @@ svg {
 }
 
 .key {
-  display: inline-block;
   flex: none;
-  width: 14px;
-  height: 2px;
-  background: var(--muted);
-  opacity: 0.55;
-  vertical-align: middle;
-}
-
-.key.current {
-  background: var(--arm);
-  opacity: 1;
+  overflow: visible;
 }
 
 .legend {

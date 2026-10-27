@@ -1,13 +1,18 @@
 <template>
   <div class="run-panel">
     <div class="buttons">
-      <button v-if="!isRunning" type="button" class="primary" :disabled="!hasTarget" @click="emit('run')">
+      <button v-if="!isRunning" type="button" class="primary" :disabled="!hasTarget || isRacing" @click="emit('run')">
         {{ isPaused ? 'Resume' : 'Run' }}
       </button>
       <button v-else type="button" class="primary" @click="emit('pause')">Pause</button>
-      <button type="button" :disabled="!hasTarget || isRunning" @click="emit('step')">Step</button>
-      <button type="button" @click="emit('reset')">Reset</button>
+      <button type="button" :disabled="!hasTarget || isRunning || isRacing" @click="emit('step')">Step</button>
+      <button type="button" :disabled="isRacing" @click="emit('reset')">Reset</button>
     </div>
+
+    <button v-if="!isRacing" type="button" :disabled="!hasTarget || isRunning" @click="emit('race')">
+      Race all four optimizers
+    </button>
+    <button v-else type="button" @click="emit('stop-race')">Stop race</button>
 
     <SegmentedControl v-model="stepsPerSecond" legend="Speed" name="speed" :options="SPEED_OPTIONS" />
 
@@ -38,6 +43,7 @@ const SPEED_OPTIONS = [
 
 const props = defineProps({
   isRunning: { type: Boolean, required: true },
+  isRacing: { type: Boolean, default: false },
   isPaused: { type: Boolean, required: true },
   hasTarget: { type: Boolean, required: true },
   isTargetReachable: { type: Boolean, required: true },
@@ -46,13 +52,14 @@ const props = defineProps({
   outcome: { type: String, default: null },
 })
 
-const emit = defineEmits(['run', 'pause', 'step', 'reset'])
+const emit = defineEmits(['run', 'pause', 'step', 'reset', 'race', 'stop-race'])
 
 const stepsPerSecond = defineModel('stepsPerSecond', { required: true })
 
 const status = computed(() => {
   if (!props.hasTarget) return 'Click anywhere on the grid to place a target.'
   if (props.outcome === 'converged') return `Reached the target in ${props.iteration} iterations.`
+  if (props.isRacing) return 'Racing every optimizer, each with its default learning rate, from the same pose.'
   if (!props.isTargetReachable) return 'This target is out of reach. The best the arm can do is point at it.'
   if (props.isRunning) return 'Running.'
   if (props.isPaused) return 'Paused. Press Step to go one iteration at a time.'
