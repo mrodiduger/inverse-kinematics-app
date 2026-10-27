@@ -78,7 +78,7 @@
 
     <h2>Things to try</h2>
     <ul>
-      <li>Compare runs: press Reset, run, change a setting, reset and run again. Earlier runs stay in the plot in grey.</li>
+      <li>Compare runs: press Reset, run, change a setting, reset and run again. Earlier runs stay in the distance plot, dimmed.</li>
       <li>Place a target outside the arm's reach and watch it settle on pointing straight at it.</li>
       <li>Push the SGD learning rate past 3 and watch the arm overshoot and swing back and forth.</li>
       <li>Compare absolute error with squared error. Its gradient never shrinks, so near the target it keeps stepping past.</li>
@@ -93,27 +93,45 @@ import TexMath from './TexMath.vue'
 
 <style scoped>
 .notes {
-  max-width: 62ch;
+  font-size: 14px;
+  line-height: 1.7;
 }
 
 .notes h2 {
-  margin: 1.75rem 0 0.5rem;
-  font-family: var(--font-serif);
-  font-size: 1.15rem;
+  margin: 2rem 0 0.5rem;
+  color: var(--bright);
+  font-size: 1rem;
   font-weight: 600;
+  text-transform: lowercase;
 }
 
-.notes h2:first-child {
-  margin-top: 0;
+.notes h2::before {
+  content: '## ';
+  color: var(--accent);
 }
 
 .notes p,
 .notes li {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.85rem;
+}
+
+.notes em,
+.notes strong {
+  color: var(--bright);
+  font-style: normal;
 }
 
 .notes ul {
-  padding-left: 1.2rem;
+  padding-left: 0;
+  list-style: none;
 }
 
+.notes li::before {
+  content: '- ';
+  color: var(--accent);
+}
+
+.notes :deep(.katex) {
+  color: var(--bright);
+}
 </style>

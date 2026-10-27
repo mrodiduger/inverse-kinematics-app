@@ -13,6 +13,7 @@ export function readPalette(element) {
   return {
     ...Object.fromEntries(Object.entries(PALETTE_VARIABLES).map(([key, name]) => [key, read(name)])),
     ink: read('--ink'),
+    font: read('--font-mono'),
     background: read('--canvas-background'),
     landscapeHigh: read('--landscape-high'),
     optimizers: [0, 1, 2, 3].map((index) => read(`--optimizer-${index}`)),
@@ -75,6 +76,19 @@ function drawGrid(ctx, view, palette, px) {
   ctx.moveTo(originX, 0)
   ctx.lineTo(originX, view.height)
   ctx.stroke()
+
+  ctx.fillStyle = palette.axis
+  ctx.font = `${px(10)}px ${palette.font}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'top'
+  for (let x = Math.ceil(left); x <= right; x += 1) {
+    if (x !== 0) ctx.fillText(String(x), view.toScreen([x, 0])[0], originY + px(4))
+  }
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  for (let y = Math.ceil(bottom); y <= top; y += 1) {
+    if (y !== 0) ctx.fillText(String(y), originX + px(4), view.toScreen([0, y])[1])
+  }
 }
 
 function drawWorkspace(ctx, view, { inner, outer }, palette, px) {
@@ -160,7 +174,8 @@ function drawRacerLabels(ctx, view, racers, palette, px) {
     if (index > 0) label.y = Math.max(label.y, labels[index - 1].y + lineHeight)
   })
 
-  ctx.font = `${px(12)}px system-ui, sans-serif`
+  ctx.font = `${px(11)}px ${palette.font}`
+  ctx.textAlign = 'left'
   ctx.textBaseline = 'middle'
   ctx.lineWidth = px(3)
   labels.forEach(({ x, y, name, optimizer }) => {
@@ -170,9 +185,9 @@ function drawRacerLabels(ctx, view, racers, palette, px) {
     ctx.fill()
 
     ctx.strokeStyle = palette.background
-    ctx.strokeText(name, x + px(11), y)
+    ctx.strokeText(name.toLowerCase(), x + px(11), y)
     ctx.fillStyle = palette.ink
-    ctx.fillText(name, x + px(11), y)
+    ctx.fillText(name.toLowerCase(), x + px(11), y)
   })
 }
 
@@ -200,10 +215,13 @@ function drawArm(ctx, view, positions, palette, px) {
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
   ctx.strokeStyle = palette.arm
-  ctx.lineWidth = px(6)
+  ctx.lineWidth = px(5)
+  ctx.shadowColor = palette.arm
+  ctx.shadowBlur = px(8)
   ctx.beginPath()
   points.forEach(([x, y], index) => (index === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)))
   ctx.stroke()
+  ctx.shadowBlur = 0
 
   ctx.fillStyle = palette.joint
   ctx.lineWidth = px(2)
