@@ -1,7 +1,21 @@
-import { computed, onUnmounted, ref, watch } from 'vue'
-import { createSimulation, forwardKinematics, restPose, workspace } from './simulation'
+import { computed, onUnmounted, ref, shallowRef, triggerRef, watch } from 'vue'
+import {
+  createSimulation,
+  forwardKinematics,
+  LOSS_FUNCTIONS,
+  OPTIMIZERS,
+  restPose,
+  workspace,
+} from './simulation'
 
 export const LINK_LENGTH = 1
+const MAX_PREVIOUS_RUNS = 3
+
+function describeRun(settings) {
+  const optimizer = OPTIMIZERS[settings.optimizer].name
+  const loss = LOSS_FUNCTIONS[settings.lossFunction].toLowerCase()
+  return `${optimizer}, ${loss}, lr ${settings.learningRate}`
+}
 
 export function useSolver(settings) {
   const angles = ref(restPose(settings.linkCount))
@@ -9,6 +23,11 @@ export function useSolver(settings) {
   const iteration = ref(0)
   const outcome = ref(null)
   const isRunning = ref(false)
+
+  const path = shallowRef([])
+  const distances = shallowRef([])
+  const runLabel = ref('')
+  const previousRuns = shallowRef([])
 
   const linkLengths = computed(() => new Array(settings.linkCount).fill(LINK_LENGTH))
   const positions = computed(() => forwardKinematics(linkLengths.value, angles.value))
@@ -30,7 +49,28 @@ export function useSolver(settings) {
   let simulation = null
   let frameRequest = null
 
-  watch(() => settings.linkCount, reset)
+  const runs = computed(() => {
+    const current = distances.value.length > 1
+      ? [{ label: runLabel.value, distances: distances.value, isCurrent: true }]
+      : []
+    return [...current, ...previousRuns.value]
+  })
+
+  watch(() => settings.linkCount, () => {
+    reset()
+    previousRuns.value = []
+  })
+
+  function archiveRun() {
+    if (distances.value.length > 1) {
+      previousRuns.value = [
+        { label: runLabel.value, distances: distances.value, isCurrent: false },
+        ...previousRuns.value,
+      ].slice(0, MAX_PREVIOUS_RUNS)
+    }
+    path.value = []
+    distances.value = []
+  }
 
   function run() {
     if (!target.value || isRunning.value) return
@@ -45,6 +85,10 @@ export function useSolver(settings) {
       initialAngles: angles.value,
       target: target.value,
     })
+    archiveRun()
+    path.value = [positions.value]
+    distances.value = [distance.value]
+    runLabel.value = describeRun(settings)
     iteration.value = 0
     outcome.value = null
     isRunning.value = true
@@ -55,6 +99,10 @@ export function useSolver(settings) {
     const state = simulation.step()
     angles.value = state.angles
     iteration.value = state.iteration
+    path.value.push(state.positions)
+    distances.value.push(state.distance)
+    triggerRef(path)
+    triggerRef(distances)
 
     if (state.done) {
       finish(state.converged ? 'converged' : 'limit')
@@ -77,6 +125,7 @@ export function useSolver(settings) {
 
   function reset() {
     finish(null)
+    archiveRun()
     angles.value = restPose(settings.linkCount)
     iteration.value = 0
   }
@@ -84,7 +133,12 @@ export function useSolver(settings) {
   function placeTarget(point) {
     target.value = point
     simulation?.setTarget(point)
-    if (!isRunning.value) outcome.value = null
+    if (!isRunning.value) {
+      outcome.value = null
+      path.value = []
+      distances.value = []
+      previousRuns.value = []
+    }
   }
 
   onUnmounted(() => finish(null))
@@ -96,6 +150,8 @@ export function useSolver(settings) {
     outcome,
     isRunning,
     positions,
+    path,
+    runs,
     reach,
     distance,
     isTargetReachable,

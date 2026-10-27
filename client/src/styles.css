@@ -13,6 +13,7 @@
   --canvas-background: #fbfaf7;
   --canvas-grid: #ebe8e0;
   --canvas-axis: #d3cfc4;
+  --canvas-reach: #f1efe8;
 
   color-scheme: light dark;
 }
@@ -29,6 +30,7 @@
     --canvas-background: #1a1d23;
     --canvas-grid: #242931;
     --canvas-axis: #353b46;
+    --canvas-reach: #1f232a;
   }
 }
 

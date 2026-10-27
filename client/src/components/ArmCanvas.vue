@@ -16,6 +16,7 @@ const props = defineProps({
   positions: { type: Array, required: true },
   target: { type: Array, default: null },
   reach: { type: Object, required: true },
+  path: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['place-target'])
@@ -28,7 +29,7 @@ let frameRequest = null
 let resizeObserver = null
 const colorScheme = window.matchMedia('(prefers-color-scheme: dark)')
 
-watch(props, requestDraw)
+watch(() => [props.positions, props.target, props.reach, props.path], requestDraw)
 
 function requestDraw() {
   if (frameRequest == null) {

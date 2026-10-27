@@ -13,6 +13,7 @@
         :positions="positions"
         :target="target"
         :reach="reach"
+        :path="path"
         @place-target="placeTarget"
       />
     </section>
@@ -29,6 +30,7 @@
         @stop="stop"
         @reset="reset"
       />
+      <LossPlot :runs="runs" :tolerance="settings.tolerance" />
       <SolverSettings
         v-model:link-count="settings.linkCount"
         v-model:loss-function="settings.lossFunction"
@@ -52,6 +54,7 @@
 import { reactive, watch } from 'vue'
 import ArmCanvas from './components/ArmCanvas.vue'
 import LessonNotes from './components/LessonNotes.vue'
+import LossPlot from './components/LossPlot.vue'
 import RunPanel from './components/RunPanel.vue'
 import SolverSettings from './components/SolverSettings.vue'
 import { OPTIMIZERS } from './simulation'
@@ -76,6 +79,8 @@ const {
   outcome,
   isRunning,
   positions,
+  path,
+  runs,
   reach,
   distance,
   isTargetReachable,

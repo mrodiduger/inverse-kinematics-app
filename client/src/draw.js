@@ -1,6 +1,7 @@
 const PALETTE_VARIABLES = {
   grid: '--canvas-grid',
   axis: '--canvas-axis',
+  reach: '--canvas-reach',
   arm: '--arm',
   joint: '--canvas-background',
   target: '--target',
@@ -13,11 +14,18 @@ export function readPalette(element) {
   )
 }
 
-export function drawScene(ctx, view, { positions, target }, palette, pixelRatio = 1) {
+const GHOST_COUNT = 8
+
+export function drawScene(ctx, view, scene, palette, pixelRatio = 1) {
+  const { positions, target, reach, path } = scene
   const px = (value) => value * pixelRatio
 
   ctx.clearRect(0, 0, view.width, view.height)
+  drawWorkspace(ctx, view, reach, palette, px)
   drawGrid(ctx, view, palette, px)
+  drawGhosts(ctx, view, path, palette, px)
+  drawTrail(ctx, view, path, palette, px)
+  if (target) drawErrorVector(ctx, view, positions, target, palette, px)
   drawArm(ctx, view, positions, palette, px)
   if (target) drawTarget(ctx, view, target, palette, px)
 }
@@ -50,6 +58,71 @@ function drawGrid(ctx, view, palette, px) {
   ctx.moveTo(originX, 0)
   ctx.lineTo(originX, view.height)
   ctx.stroke()
+}
+
+function drawWorkspace(ctx, view, { inner, outer }, palette, px) {
+  const [x, y] = view.toScreen([0, 0])
+
+  ctx.fillStyle = palette.reach
+  ctx.beginPath()
+  ctx.arc(x, y, outer * view.scale + px(1), 0, 2 * Math.PI)
+  ctx.arc(x, y, Math.max(0, inner * view.scale - px(1)), 0, 2 * Math.PI, true)
+  ctx.fill()
+
+  ctx.strokeStyle = palette.axis
+  ctx.lineWidth = px(1)
+  ctx.beginPath()
+  ctx.arc(x, y, outer * view.scale, 0, 2 * Math.PI)
+  ctx.stroke()
+}
+
+function drawGhosts(ctx, view, path, palette, px) {
+  if (path.length < 2) return
+
+  const spacing = Math.max(1, Math.floor(path.length / GHOST_COUNT))
+  ctx.strokeStyle = palette.arm
+  ctx.lineWidth = px(2)
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+
+  for (let index = 0; index < path.length - 1; index += spacing) {
+    ctx.globalAlpha = 0.06 + 0.14 * (index / path.length)
+    ctx.beginPath()
+    ctx.moveTo(...view.toScreen([0, 0]))
+    path[index].forEach((point) => ctx.lineTo(...view.toScreen(point)))
+    ctx.stroke()
+  }
+  ctx.globalAlpha = 1
+}
+
+function drawTrail(ctx, view, path, palette, px) {
+  if (path.length < 2) return
+
+  ctx.strokeStyle = palette.arm
+  ctx.globalAlpha = 0.55
+  ctx.lineWidth = px(1.5)
+  ctx.beginPath()
+  path.forEach((positions, index) => {
+    const [x, y] = view.toScreen(positions[positions.length - 1])
+    if (index === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  })
+  ctx.stroke()
+  ctx.globalAlpha = 1
+}
+
+function drawErrorVector(ctx, view, positions, target, palette, px) {
+  const [startX, startY] = view.toScreen(positions[positions.length - 1])
+  const [endX, endY] = view.toScreen(target)
+
+  ctx.strokeStyle = palette.target
+  ctx.lineWidth = px(1.5)
+  ctx.setLineDash([px(4), px(4)])
+  ctx.beginPath()
+  ctx.moveTo(startX, startY)
+  ctx.lineTo(endX, endY)
+  ctx.stroke()
+  ctx.setLineDash([])
 }
 
 function drawArm(ctx, view, positions, palette, px) {
