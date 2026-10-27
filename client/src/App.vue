@@ -4,6 +4,7 @@
     <p>
       Click the grid to place a target. The arm searches for joint angles that reach it by
       repeatedly stepping downhill on the distance to the target.
+      <a href="theory/">How the maths works</a>
     </p>
   </header>
 
@@ -64,7 +65,6 @@
 
     <div class="reading">
       <StepBreakdown :step="lastStep" />
-      <LessonNotes />
     </div>
   </main>
 
@@ -76,7 +76,6 @@
 <script setup>
 import { computed, reactive, watch } from 'vue'
 import ArmCanvas from './components/ArmCanvas.vue'
-import LessonNotes from './components/LessonNotes.vue'
 import LossLandscape from './components/LossLandscape.vue'
 import LossPlot from './components/LossPlot.vue'
 import RunPanel from './components/RunPanel.vue'
